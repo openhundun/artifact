@@ -1,0 +1,21 @@
+{{- $fullname := .Values.fullnameOverride | default .Release.Name }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: oracle
+    app.kubernetes.io/instance: {{ $fullname }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.ports.listener.port }}
+      targetPort: listener
+  selector:
+    app.kubernetes.io/name: oracle
+    app.kubernetes.io/instance: {{ $fullname }}

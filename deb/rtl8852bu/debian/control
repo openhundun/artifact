@@ -1,0 +1,15 @@
+Source: rtl8852bu
+Section: kernel
+Priority: optional
+Maintainer: root <root@localhost>
+Build-Depends: debhelper-compat (= 13), dh-dkms
+Standards-Version: 4.7.0
+Homepage: https://github.com/morrownr/rtl8852bu-20250826
+Rules-Requires-Root: no
+
+Package: rtl8852bu
+Architecture: all
+Depends: dkms, usb-modeswitch, bc, ${misc:Depends}
+Recommends: linux-headers-generic | linux-headers-amd64 | linux-headers-arm64
+Description: DKMS driver for RTL8852BU/RTL8832BU Wi-Fi 6 USB adapters
+ This package provides the out-of-tree rtl8852bu driver source for DKMS.

@@ -1,0 +1,78 @@
+name: image
+
+on:
+  workflow_dispatch:
+    inputs:
+      nix: { type: boolean, default: false }
+      alpine: { type: boolean, default: false }
+      debian: { type: boolean, default: false }
+      ubuntu: { type: boolean, default: false }
+
+permissions:
+  contents: read
+  packages: write
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -euo pipefail {0}
+
+jobs:
+  nix:
+    if: ${{ inputs.nix }}
+    runs-on: [self-hosted]
+    timeout-minutes: 60
+    env:
+      DOCKER_CONFIG: ${{ github.workspace }}/../docker-config-nix
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - run: bash image/sh.sh job__nix step__build
+
+  alpine:
+    if: ${{ inputs.alpine }}
+    runs-on: [self-hosted]
+    timeout-minutes: 60
+    env:
+      DOCKER_CONFIG: ${{ github.workspace }}/../docker-config-alpine
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - run: bash image/sh.sh job__alpine step__build
+
+  debian:
+    if: ${{ inputs.debian }}
+    runs-on: [self-hosted]
+    timeout-minutes: 60
+    env:
+      DOCKER_CONFIG: ${{ github.workspace }}/../docker-config-debian
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - run: bash image/sh.sh job__debian step__build
+
+  ubuntu:
+    if: ${{ inputs.ubuntu }}
+    runs-on: [self-hosted]
+    timeout-minutes: 60
+    env:
+      DOCKER_CONFIG: ${{ github.workspace }}/../docker-config-ubuntu
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - run: bash image/sh.sh job__ubuntu step__build

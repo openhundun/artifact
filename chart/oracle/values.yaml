@@ -1,0 +1,32 @@
+image:
+  registry: docker.io
+  repository: gvenzl/oracle-free
+  tag: 23-full-faststart
+  pullPolicy: IfNotPresent
+fullnameOverride: ""
+nodeSelector: {}
+extraEnv:
+  - name: TZ
+    value: Asia/Shanghai
+service:
+  type: ClusterIP
+  annotations: {}
+  ports:
+    listener:
+      port: 1521
+auth:
+  existingSecret: ""
+  password: oracle
+persistence:
+  size: 8Gi
+  storageClassName: ""
+  accessModes:
+    - ReadWriteOnce
+  mountPath: /opt/oracle/oradata
+resources:
+  requests:
+    cpu: 2000m
+    memory: 4Gi
+  limits:
+    cpu: 2000m
+    memory: 4Gi

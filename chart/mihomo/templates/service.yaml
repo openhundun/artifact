@@ -1,0 +1,25 @@
+{{- $fullname := .Values.fullnameOverride | default .Release.Name }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: mihomo
+    app.kubernetes.io/instance: {{ $fullname }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    app.kubernetes.io/name: mihomo
+    app.kubernetes.io/instance: {{ $fullname }}
+  ports:
+    - name: mixed
+      port: {{ .Values.service.ports.mixed.port }}
+      targetPort: mixed
+    - name: api
+      port: {{ .Values.service.ports.api.port }}
+      targetPort: api

@@ -1,0 +1,33 @@
+name: chart
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -euo pipefail {0}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - run: bash chart/sh.sh job__check step__lint
+
+  chart:
+    needs: [check]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - env:
+          CHART_REGISTRY_USERNAME: ${{ github.actor }}
+          CHART_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "${CHART_REGISTRY_PASSWORD}" | helm registry login ghcr.io -u "${CHART_REGISTRY_USERNAME}" --password-stdin
+      - run: bash chart/sh.sh job__chart step__package
+      - run: bash chart/sh.sh job__chart step__push

@@ -1,0 +1,31 @@
+image:
+  registry: docker.io
+  repository: metacubex/mihomo
+  tag: v1.19.32
+  pullPolicy: IfNotPresent
+fullnameOverride: ""
+nodeSelector: {}
+extraEnv:
+  - name: TZ
+    value: Asia/Shanghai
+service:
+  type: ClusterIP
+  annotations: {}
+  ports:
+    mixed:
+      port: 7890
+    api:
+      port: 9090
+config:
+  content: |
+    mode: rule
+    log-level: info
+    external-controller: 0.0.0.0:9090
+  existingSecret: ""
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

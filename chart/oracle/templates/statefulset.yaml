@@ -1,0 +1,66 @@
+{{- $fullname := .Values.fullnameOverride | default .Release.Name }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $fullname }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: oracle
+    app.kubernetes.io/instance: {{ $fullname }}
+spec:
+  replicas: 1
+  serviceName: {{ $fullname }}
+  terminationGracePeriodSeconds: 90
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: oracle
+      app.kubernetes.io/instance: {{ $fullname }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: oracle
+        app.kubernetes.io/instance: {{ $fullname }}
+    spec:
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: oracle
+          image: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: listener
+              containerPort: 1521
+          readinessProbe:
+            tcpSocket:
+              port: listener
+          startupProbe:
+            tcpSocket:
+              port: listener
+            periodSeconds: 10
+            failureThreshold: 30
+          env:
+            {{- toYaml .Values.extraEnv | nindent 12 }}
+            - name: ORACLE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.auth.existingSecret | default (printf "%s-auth" $fullname) }}
+                  key: ORACLE_PASSWORD
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.persistence.mountPath }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          {{- toYaml .Values.persistence.accessModes | nindent 10 }}
+        {{- with .Values.persistence.storageClassName }}
+        storageClassName: {{ . }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size }}

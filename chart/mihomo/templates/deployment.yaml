@@ -1,0 +1,56 @@
+{{- $fullname := .Values.fullnameOverride | default .Release.Name }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: mihomo
+    app.kubernetes.io/instance: {{ $fullname }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mihomo
+      app.kubernetes.io/instance: {{ $fullname }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ .Values.config.existingSecret | default (printf "mixed-port: %d\nallow-lan: true\nbind-address: \"*\"\n%s" (int .Values.service.ports.mixed.port) .Values.config.content) | sha256sum }}
+      labels:
+        app.kubernetes.io/name: mihomo
+        app.kubernetes.io/instance: {{ $fullname }}
+    spec:
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: mihomo
+          image: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            {{- toYaml .Values.extraEnv | nindent 12 }}
+          ports:
+            - name: mixed
+              containerPort: {{ .Values.service.ports.mixed.port }}
+            - name: api
+              containerPort: {{ .Values.service.ports.api.port }}
+          livenessProbe:
+            tcpSocket:
+              port: mixed
+          readinessProbe:
+            tcpSocket:
+              port: mixed
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /root/.config/mihomo/config.yaml
+              subPath: config.yaml
+      volumes:
+        - name: config
+          secret:
+            secretName: {{ .Values.config.existingSecret | default (printf "%s-config" $fullname) }}

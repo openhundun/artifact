@@ -1,0 +1,25 @@
+name: deb
+
+on:
+  workflow_dispatch:
+    inputs:
+      rtl8852bu: { type: boolean, default: false }
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -euo pipefail {0}
+
+jobs:
+  rtl8852bu:
+    if: ${{ inputs.rtl8852bu }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - run: bash deb/sh.sh job__rtl8852bu step__build
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash deb/sh.sh job__rtl8852bu step__release
