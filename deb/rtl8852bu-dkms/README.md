@@ -2,13 +2,32 @@
 
 morrownr/rtl8852bu 上游驱动打包为 **DKMS deb**：安装即编译，内核升级自动重编，任意 Debian/Ubuntu 架构通用（`Architecture: all`，编译发生在目标机）。仓库自包含（固件随仓），`build.sh` 一条命令出包，产物不入仓。
 
+## 仓库布局
+
+```
+rtl8852bu-dkms/
+├── README.md              # 本文档
+├── build.sh               # 构建入口（拉源码 → 打补丁 → 组装 → dpkg-deb）
+├── debian/                # Debian 打包元数据（Policy §4.1 官方布局）
+│   ├── control            # 包元数据（必需字段）
+│   ├── postinst           # 安装钩子：对所有已装内核逐个 build/install
+│   └── prerm              # 卸载钩子：dkms remove
+└── files/                 # 打包素材（对应 deb 内的分发路径）
+    ├── dkms.conf          # → /usr/src/rtl8852bu-<ver>/dkms.conf（DKMS 必需）
+    ├── usb-modeswitch.0bda-1a2b   # → /etc/usb_modeswitch.d/0bda:1a2b（源=语义名，目标=官方 VID:PID 名）
+    └── firmware/
+        └── rtl8852bfw_rom.bin     # → /lib/firmware/rtl8852b/（FHS 固件路径）
+```
+
+`files/` 内的文件名 = 仓库语义名；构建时 `build.sh` 改名为目标路径的官方名（如 modeswitch 规则的目标文件名必须是 `0bda:1a2b`，usb_modeswitch 按 VID:PID 查找）。
+
 ## 包内容
 
 | 路径                                        | 内容                                               |
 | ------------------------------------------- | -------------------------------------------------- |
-| `/usr/src/rtl8852bu-20250826/`              | 上游驱动源码（已打 `__DATE__` patch）+ `dkms.conf` |
-| `/lib/firmware/rtl8852b/rtl8852bfw_rom.bin` | 固件（内核 rtw89 固件改名，实测可用）              |
-| `/etc/usb_modeswitch.d/0bda:1a2b`           | Realtek 驱动光盘 → 无线模式切换规则                |
+| `/usr/src/rtl8852bu-20250826/`              | 上游驱动源码（已打 `__DATE__` patch）+ `files/dkms.conf` |
+| `/lib/firmware/rtl8852b/rtl8852bfw_rom.bin` | 固件（内核 rtw89 固件改名，实测可用；源=`files/firmware/`）|
+| `/etc/usb_modeswitch.d/0bda:1a2b`           | Realtek 驱动光盘 → 无线模式切换规则（源=`files/usb-modeswitch.0bda-1a2b`）|
 
 ## 构建
 
