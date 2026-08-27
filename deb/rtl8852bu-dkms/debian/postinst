@@ -5,7 +5,7 @@ case "$1" in
 configure)
     if dkms status 2>/dev/null | grep -q "^rtl8852bu/"; then dkms remove -m rtl8852bu -v 20250826 --all >/dev/null 2>&1 || true; fi
     dkms add -m rtl8852bu -v 20250826 >/dev/null 2>&1 || true
-    OK=0
+    OK="0"
     for d in /lib/modules/*/build; do
         [ -d "${d}" ] || continue
         k="$(basename "$(dirname "${d}")")"
