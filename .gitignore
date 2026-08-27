@@ -8,6 +8,7 @@
 **/*.swo
 **/*.swp
 **/.DS_Store
+**/._*
 **/.coverage
 **/.eggs/
 **/.git/
