@@ -11,7 +11,9 @@ FIRMWARE="${FIRMWARE:-${HERE}/firmware/rtl8852bfw_rom.bin}"
 BUILD="$(mktemp -d)"
 trap 'rm -rf "${BUILD}"' EXIT
 
-for c in git tar dpkg-deb; do command -v "${c}" >/dev/null || { echo "缺少依赖: ${c}" >&2; exit 1; }; done
+for c in git tar dpkg-deb; do
+    command -v "${c}" > /dev/null || { echo "缺少依赖: ${c}" >&2; exit 1; }
+done
 control_ver="$(sed -n 's/^Version: //p' "${HERE}/debian/control")"
 dkms_ver="$(sed -n 's/^PACKAGE_VERSION="\(.*\)"/\1/p' "${HERE}/dkms.conf")"
 if [[ "${control_ver}" != "${VER}-${REV}" ]] || [[ "${dkms_ver}" != "${VER}" ]]; then
