@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-HERE="$(cd "$(dirname "$0")" && pwd)"
+HERE="$(cd "$(dirname "${0}")" && pwd)"
 VER="20250826"
 REV="5"
 PKG="rtl8852bu-dkms_${VER}-${REV}_all.deb"
