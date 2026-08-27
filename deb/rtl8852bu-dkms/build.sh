@@ -18,12 +18,18 @@ if [[ "${control_ver}" != "${VER}-${REV}" ]] || [[ "${dkms_ver}" != "${VER}" ]];
     echo "版本不一致: control=${control_ver} dkms=${dkms_ver} 期望 ${VER}-${REV}/${VER}" >&2
     exit 1
 fi
-[[ -f "${FIRMWARE}" ]] || { echo "固件不存在: ${FIRMWARE}" >&2; exit 1; }
+if [[ ! -f "${FIRMWARE}" ]]; then
+    echo "固件不存在: ${FIRMWARE}" >&2
+    exit 1
+fi
 mkdir -p "${OUT}"
 
 echo "== [1/4] source =="
 if [[ -n "${SRC}" ]]; then
-    [[ -f "${SRC}" ]] || { echo "离线源不存在: ${SRC}" >&2; exit 1; }
+    if [[ ! -f "${SRC}" ]]; then
+        echo "离线源不存在: ${SRC}" >&2
+        exit 1
+    fi
     mkdir -p "${BUILD}/src"
     tar xf "${SRC}" -C "${BUILD}/src" --strip-components=1
 else
@@ -32,7 +38,10 @@ fi
 
 echo "== [2/4] apply patches =="
 sed -i 's/"build time: %s %s\\n", __DATE__, __TIME__/"build time: n\/a\\n"/' "${BUILD}/src/core/rtw_debug.c"
-grep -q 'n/a' "${BUILD}/src/core/rtw_debug.c" || { echo "patch 未命中（上游源码已变？）" >&2; exit 1; }
+if ! grep -q 'n/a' "${BUILD}/src/core/rtw_debug.c"; then
+    echo "patch 未命中（上游源码已变？）" >&2
+    exit 1
+fi
 
 echo "== [3/4] assemble package tree =="
 ROOT="${BUILD}/root"
@@ -41,7 +50,7 @@ cp -a "${BUILD}/src/." "${ROOT}/usr/src/rtl8852bu-${VER}/"
 rm -rf "${ROOT}/usr/src/rtl8852bu-${VER}/.git"
 cp "${HERE}/dkms.conf" "${ROOT}/usr/src/rtl8852bu-${VER}/dkms.conf"
 cp "${FIRMWARE}" "${ROOT}/lib/firmware/rtl8852b/"
-cp "${HERE}/modeswitch.0bda-1a2b" "${ROOT}/etc/usb_modeswitch.d/0bda:1a2b"
+cp "${HERE}/0bda:1a2b" "${ROOT}/etc/usb_modeswitch.d/0bda:1a2b"
 cp "${HERE}/debian/control" "${ROOT}/DEBIAN/control"
 cp "${HERE}/debian/postinst" "${ROOT}/DEBIAN/postinst"
 cp "${HERE}/debian/prerm" "${ROOT}/DEBIAN/prerm"
