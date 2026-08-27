@@ -3,7 +3,7 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${0}")" && pwd)"
 VER="20250826"
-REV="5"
+REV="1"
 PKG="rtl8852bu-dkms_${VER}-${REV}_all.deb"
 OUT="${OUT:-${HERE}}"
 SRC="${SRC:-}"

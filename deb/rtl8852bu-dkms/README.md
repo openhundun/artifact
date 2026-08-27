@@ -40,7 +40,7 @@ apt install git dpkg-dev
 ## 安装
 
 ```bash
-sudo apt install ./rtl8852bu-dkms_20250826-5_all.deb
+sudo apt install ./rtl8852bu-dkms_20250826-1_all.deb
 ```
 
 postinst 自动：清旧版本 DKMS 注册 → 遍历 `/lib/modules/*/build` 对**所有已装 headers 的内核**逐个 build+install（实测 -4 的 `dkms autoinstall` 对非运行内核静默跳过，不可依赖）→ `depmod`。linux-headers 全缺时跳过构建，下次内核安装时由 dkms 钩子补编。插卡即用。
@@ -71,6 +71,7 @@ prerm 自动 `dkms remove`，固件/规则一并移除。
 
 | 版本       | 变更                                                                                                                                     |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 20250826-1 | 版本号策略：**统一 revision=1**，内容演进不 bump 版本（release 覆盖上传）；历史变更见下 |
 | 20250826-5 | postinst 显式遍历 `/lib/modules/*/build` 逐内核构建；build.sh 增 `SRC=` 离线源                                                           |
 | 20250826-4 | postinst 改 `dkms autoinstall`（对非运行内核静默跳过，未达预期，被 -5 取代）                                                             |
 | 20250826-3 | 补回一行 `Description` + 匿名 `Maintainer`（`root <root@localhost>`）：缺这两字段 dpkg-query 每次解析 status 库都告警，污染整机 apt 输出 |

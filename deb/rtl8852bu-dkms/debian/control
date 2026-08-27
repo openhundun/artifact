@@ -1,5 +1,5 @@
 Package: rtl8852bu-dkms
-Version: 20250826-5
+Version: 20250826-1
 Architecture: all
 Maintainer: root <root@localhost>
 Homepage: https://github.com/morrownr/rtl8852bu
