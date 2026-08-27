@@ -43,6 +43,13 @@ apt install git dpkg-dev
 sudo apt install ./rtl8852bu-dkms_20250826-1_all.deb
 ```
 
+**升级/重装**（同版本号内容更新时 `apt install` 会静默跳过，必须强制重装）：
+
+```bash
+sudo apt install --reinstall ./rtl8852bu-dkms_20250826-1_all.deb   # 或
+sudo dpkg -i ./rtl8852bu-dkms_20250826-1_all.deb
+```
+
 postinst 自动：清旧版本 DKMS 注册 → 遍历 `/lib/modules/*/build` 对**所有已装 headers 的内核**逐个 build+install（实测 -4 的 `dkms autoinstall` 对非运行内核静默跳过，不可依赖）→ `depmod`。linux-headers 全缺时跳过构建，下次内核安装时由 dkms 钩子补编。插卡即用。
 
 ## 卸载
