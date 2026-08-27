@@ -1,9 +1,21 @@
 FROM docker.io/library/debian:13-slim AS base
+RUN cat > /etc/apt/sources.list.d/debian.sources << EOF
+Types: deb
+URIs: http://mirrors.ustc.edu.cn/debian
+Suites: trixie trixie-updates trixie-backports
+Components: main contrib non-free non-free-firmware
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+Types: deb
+URIs: http://mirrors.ustc.edu.cn/debian-security
+Suites: trixie-security
+Components: main contrib non-free non-free-firmware
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+EOF
 RUN \
-    sed -i 's|deb.debian.org|mirrors.ustc.edu.cn|g' /etc/apt/sources.list.d/debian.sources && \
     apt-get update && \
     apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends ca-certificates ccache cmake curl file git make ninja-build pkg-config unzip xz-utils zip && \
+    apt-get install -y --no-install-recommends ca-certificates ccache cmake curl file git llvm-21 make ninja-build pkg-config unzip xz-utils zip && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists && \
     rm -rf /var/cache/apt/archives
@@ -25,5 +37,5 @@ COPY --from=builder /opt/zig /opt/zig
 ENV \
     TZ="Asia/Shanghai" \
     TIME_STYLE="+%Y-%m-%d %H:%M:%S" \
-    PATH="/opt/zig:${PATH}"
+    PATH="/opt/zig:/usr/lib/llvm-21/bin:${PATH}"
 CMD ["zig", "version"]
