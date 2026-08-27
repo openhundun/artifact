@@ -7,11 +7,16 @@ REV="5"
 PKG="rtl8852bu-dkms_${VER}-${REV}_all.deb"
 OUT="${OUT:-${HERE}}"
 SRC="${SRC:-}"
-FIRMWARE="${FIRMWARE:-${HERE}/rootfs/lib/firmware/rtl8852b/rtl8852bfw_rom.bin}"
 BUILD="$(mktemp -d)"
 trap 'rm -rf "${BUILD}"' EXIT
 
+die() {
+    echo "$*" >&2
+    exit 1
+}
+
 check_env() {
+    mkdir -p "${OUT}"
     for c in git tar dpkg-deb; do
         command -v "${c}" > /dev/null || die "缺少依赖: ${c}"
     done
@@ -20,14 +25,11 @@ check_env() {
     if [[ "${control_ver}" != "${VER}-${REV}" ]] || [[ "${dkms_ver}" != "${VER}" ]]; then
         die "版本不一致: control=${control_ver} dkms=${dkms_ver} 期望 ${VER}-${REV}/${VER}"
     fi
-    [[ -f "${FIRMWARE}" ]] || die "固件不存在: ${FIRMWARE}"
-    mkdir -p "${OUT}"
 }
 
 fetch_source() {
+    mkdir -p "${BUILD}/src"
     if [[ -n "${SRC}" ]]; then
-        [[ -f "${SRC}" ]] || die "离线源不存在: ${SRC}"
-        mkdir -p "${BUILD}/src"
         tar xf "${SRC}" -C "${BUILD}/src" --strip-components=1
     else
         git clone --quiet --depth 1 https://github.com/morrownr/rtl8852bu-20250826 "${BUILD}/src"
@@ -55,11 +57,6 @@ assemble() {
 build_deb() {
     dpkg-deb --build --root-owner-group "${ROOT}" "${OUT}/${PKG}" > /dev/null
     echo "Built: ${OUT}/${PKG}"
-}
-
-die() {
-    echo "$*" >&2
-    exit 1
 }
 
 check_env

@@ -35,7 +35,7 @@ apt install git dpkg-dev
 ./build.sh
 ```
 
-脚本步骤：取源码（默认 `git clone` 上游；网络不通时 `SRC=src.tar.gz` 离线源，tar 内需含 `rtl8852bu-20250826/` 顶层目录）→ `__DATE__` patch → 组装 → `dpkg-deb --build`。可覆盖变量：`OUT=`（产物目录）、`FIRMWARE=`（固件路径）、`SRC=`（离线源）。
+脚本步骤：取源码（默认 `git clone` 上游；网络不通时 `SRC=src.tar.gz` 离线源，tar 内需含 `rtl8852bu-20250826/` 顶层目录）→ `__DATE__` patch → 组装 → `dpkg-deb --build`。可覆盖变量：`OUT=`（产物目录）、`SRC=`（离线源）。固件无变量——由 `rootfs/lib/firmware/` 静态承载（整树复制）。
 
 ## 安装
 
