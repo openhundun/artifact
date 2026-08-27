@@ -12,7 +12,7 @@ configure)
         [ -d "${d}" ] || continue
         k="$(basename "$(dirname "${d}")")"
         if dkms build -m rtl8852bu -v 20250826 -k "${k}" > /dev/null 2>&1 && dkms install -m rtl8852bu -v 20250826 -k "${k}" > /dev/null 2>&1; then
-            OK=$((OK + 1))
+            OK="$((OK + 1))"
         fi
     done
     depmod -a > /dev/null 2>&1 || true
