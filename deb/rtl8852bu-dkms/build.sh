@@ -7,7 +7,7 @@ REV="5"
 PKG="rtl8852bu-dkms_${VER}-${REV}_all.deb"
 OUT="${OUT:-${HERE}}"
 SRC="${SRC:-}"
-FIRMWARE="${FIRMWARE:-${HERE}/rootfs/firmware/rtl8852bfw_rom.bin}"
+FIRMWARE="${FIRMWARE:-${HERE}/rootfs/lib/firmware/rtl8852b/rtl8852bfw_rom.bin}"
 BUILD="$(mktemp -d)"
 trap 'rm -rf "${BUILD}"' EXIT
 
@@ -15,7 +15,7 @@ for c in git tar dpkg-deb; do
     command -v "${c}" > /dev/null || { echo "缺少依赖: ${c}" >&2; exit 1; }
 done
 control_ver="$(sed -n 's/^Version: //p' "${HERE}/debian/control")"
-dkms_ver="$(sed -n 's/^PACKAGE_VERSION="\(.*\)"/\1/p' "${HERE}/rootfs/dkms.conf")"
+dkms_ver="$(sed -n 's/^PACKAGE_VERSION="\(.*\)"/\1/p' "${HERE}/dkms.conf")"
 if [[ "${control_ver}" != "${VER}-${REV}" ]] || [[ "${dkms_ver}" != "${VER}" ]]; then
     echo "版本不一致: control=${control_ver} dkms=${dkms_ver} 期望 ${VER}-${REV}/${VER}" >&2
     exit 1
@@ -47,12 +47,11 @@ fi
 
 echo "== [3/4] assemble package tree =="
 ROOT="${BUILD}/root"
-mkdir -p "${ROOT}/usr/src/rtl8852bu-${VER}" "${ROOT}/DEBIAN" "${ROOT}/lib/firmware/rtl8852b" "${ROOT}/etc/usb_modeswitch.d"
+mkdir -p "${ROOT}/usr/src/rtl8852bu-${VER}" "${ROOT}/DEBIAN"
+cp -a "${HERE}/rootfs/." "${ROOT}/"
 cp -a "${BUILD}/src/." "${ROOT}/usr/src/rtl8852bu-${VER}/"
 rm -rf "${ROOT}/usr/src/rtl8852bu-${VER}/.git"
-cp "${HERE}/rootfs/dkms.conf" "${ROOT}/usr/src/rtl8852bu-${VER}/dkms.conf"
-cp "${FIRMWARE}" "${ROOT}/lib/firmware/rtl8852b/"
-cp "${HERE}/rootfs/usb-modeswitch.0bda-1a2b" "${ROOT}/etc/usb_modeswitch.d/0bda:1a2b"
+cp "${HERE}/dkms.conf" "${ROOT}/usr/src/rtl8852bu-${VER}/dkms.conf"
 cp "${HERE}/debian/control" "${ROOT}/DEBIAN/control"
 cp "${HERE}/debian/postinst" "${ROOT}/DEBIAN/postinst"
 cp "${HERE}/debian/prerm" "${ROOT}/DEBIAN/prerm"

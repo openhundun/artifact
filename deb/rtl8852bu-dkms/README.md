@@ -12,22 +12,21 @@ rtl8852bu-dkms/
 │   ├── control            # 包元数据（必需字段）
 │   ├── postinst           # 安装钩子：对所有已装内核逐个 build/install
 │   └── prerm              # 卸载钩子：dkms remove
-└── rootfs/                 # 模拟 rootfs 静态片段（build.sh 组装时整树并入 $ROOT）
-    ├── dkms.conf          # → /usr/src/rtl8852bu-<ver>/dkms.conf（DKMS 必需）
-    ├── usb-modeswitch.0bda-1a2b   # → /etc/usb_modeswitch.d/0bda:1a2b（源=语义名，目标=官方 VID:PID 名）
-    └── firmware/
-        └── rtl8852bfw_rom.bin     # → /lib/firmware/rtl8852b/（FHS 固件路径）
+├── dkms.conf             # → /usr/src/rtl8852bu-<ver>/dkms.conf（DKMS 必需；路径带版本号，归动态注入层）
+└── rootfs/               # 模拟 rootfs 静态片段（FHS 树，build.sh 整树并入 $ROOT）
+    └── etc/usb_modeswitch.d/0bda:1a2b        # → /etc/usb_modeswitch.d/0bda:1a2b
+    └── lib/firmware/rtl8852b/rtl8852bfw_rom.bin  # → /lib/firmware/rtl8852b/
 ```
 
-`rootfs/` 内的文件名 = 仓库语义名；构建时 `build.sh` 改名为目标路径的官方名（如 modeswitch 规则的目标文件名必须是 `0bda:1a2b`，usb_modeswitch 按 VID:PID 查找）。
+`rootfs/` 直接以 `/` 为根按 FHS 摆放（路径即目标路径，零映射）；唯一例外是 `dkms.conf`——目标路径带构建期版本号，由 build.sh 动态注入。
 
 ## 包内容
 
 | 路径                                        | 内容                                               |
 | ------------------------------------------- | -------------------------------------------------- |
-| `/usr/src/rtl8852bu-20250826/`              | 上游驱动源码（已打 `__DATE__` patch）+ `rootfs/dkms.conf` |
-| `/lib/firmware/rtl8852b/rtl8852bfw_rom.bin` | 固件（内核 rtw89 固件改名，实测可用；源=`rootfs/firmware/`）|
-| `/etc/usb_modeswitch.d/0bda:1a2b`           | Realtek 驱动光盘 → 无线模式切换规则（源=`rootfs/usb-modeswitch.0bda-1a2b`）|
+| `/usr/src/rtl8852bu-20250826/`              | 上游驱动源码（已打 `__DATE__` patch）+ `dkms.conf` |
+| `/lib/firmware/rtl8852b/rtl8852bfw_rom.bin` | 固件（内核 rtw89 固件改名，实测可用；源=`rootfs/lib/firmware/rtl8852b/`）|
+| `/etc/usb_modeswitch.d/0bda:1a2b`           | Realtek 驱动光盘 → 无线模式切换规则（源=`rootfs/etc/usb_modeswitch.d/0bda:1a2b`）|
 
 ## 构建
 
