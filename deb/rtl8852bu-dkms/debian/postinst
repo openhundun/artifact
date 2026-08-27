@@ -1,0 +1,21 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+configure)
+    if dkms status 2> /dev/null | grep -q "^rtl8852bu/"; then dkms remove -m rtl8852bu -v 20250826 --all > /dev/null 2>&1 || true; fi
+    dkms add -m rtl8852bu -v 20250826 > /dev/null 2>&1 || true
+    OK=0
+    for d in /lib/modules/*/build; do
+        k="$(basename "$(dirname "$d")")"
+        if dkms build -m rtl8852bu -v 20250826 -k "$k" > /dev/null 2>&1 && dkms install -m rtl8852bu -v 20250826 -k "$k" > /dev/null 2>&1; then OK=$((OK + 1)); fi
+    done
+    depmod -a > /dev/null 2>&1 || true
+    if [ "$OK" -gt 0 ]; then
+        echo "rtl8852bu-dkms: module built and installed for $OK kernel(s), $(uname -r) running"
+    else
+        echo "rtl8852bu-dkms: dkms build skipped (linux-headers missing? will auto-build on next kernel install)." >&2
+    fi
+    ;;
+esac
+exit 0
