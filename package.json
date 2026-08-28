@@ -1,0 +1,8 @@
+{
+  "devDependencies": {
+    "prettier": "latest",
+    "prettier-plugin-sh": "latest",
+    "prettier-plugin-toml": "latest",
+    "prettier-plugin-yaml": "latest"
+  }
+}

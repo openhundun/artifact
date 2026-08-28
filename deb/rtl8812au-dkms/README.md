@@ -1,4 +1,4 @@
-# rtl8852bu-dkms
+# rtl8812au-dkms
 
 ## Build
 
@@ -9,7 +9,7 @@
 ## Install
 
 ```sh
-sudo apt install --reinstall ./rtl8852bu-dkms_20250826-1_all.deb
+sudo apt install --reinstall ./rtl8812au-dkms_5.6.4.2-1_all.deb
 ```
 
 ## Use as client
@@ -126,16 +126,12 @@ interface=wlx<mac>
 driver=nl80211
 ssid=<ssid>
 hw_mode=a
-channel=36
+channel=149
 country_code=CN
 ieee80211n=1
 ht_capab=[HT40+][SHORT-GI-20][SHORT-GI-40][RX-STBC1]
 ieee80211ac=1
-vht_oper_chwidth=1
-vht_oper_centr_freq_seg0_idx=42
-ieee80211ax=1
-he_oper_chwidth=1
-he_oper_centr_freq_seg0_idx=42
+vht_oper_chwidth=0
 wpa=2
 wpa_passphrase=<passwd>
 EOF

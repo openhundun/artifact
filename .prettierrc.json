@@ -1,0 +1,32 @@
+{
+  "arrowParens": "avoid",
+  "bracketSameLine": false,
+  "bracketSpacing": true,
+  "embeddedLanguageFormatting": "off",
+  "endOfLine": "lf",
+  "experimentalOperatorPosition": "end",
+  "experimentalTernaries": false,
+  "htmlWhitespaceSensitivity": "css",
+  "insertPragma": false,
+  "jsxSingleQuote": false,
+  "objectWrap": "preserve",
+  "printWidth": 200,
+  "proseWrap": "preserve",
+  "quoteProps": "consistent",
+  "requirePragma": false,
+  "semi": true,
+  "singleAttributePerLine": false,
+  "singleQuote": false,
+  "tabWidth": 4,
+  "trailingComma": "all",
+  "useTabs": false,
+  "vueIndentScriptAndStyle": false,
+  "overrides": [
+    { "files": ["*.json"], "options": { "printWidth": 1000, "tabWidth": 2 } },
+    { "files": ["*.md"], "options": { "printWidth": 1000, "tabWidth": 4 } },
+    { "files": ["*.sh"], "options": { "printWidth": 1000, "tabWidth": 4, "binaryNextLine": false, "functionNextLine": false, "indent": 4, "minify": false, "singleLine": false, "spaceRedirects": true, "switchCaseIndent": false } },
+    { "files": ["*.toml"], "options": { "printWidth": 1000, "tabWidth": 4, "alignComments": true, "alignEntries": true, "allowedBlankLines": 1, "arrayAutoCollapse": true, "arrayAutoExpand": true, "compactArrays": true, "compactEntries": false, "compactInlineTables": false, "indentEntries": false, "indentTables": false, "reorderKeys": true } },
+    { "files": ["*.yaml"], "options": { "printWidth": 1000, "singleQuote": false, "tabWidth": 2 } }
+  ],
+  "plugins": ["prettier-plugin-sh", "prettier-plugin-toml"]
+}
