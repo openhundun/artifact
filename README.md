@@ -12,4 +12,6 @@
 
 ## deb
 
-- `rtl8852bu-dkms/` — RTL8852BU/RTL8832BU USB Wi-Fi 6 网卡 DKMS 驱动包，安装即编译、内核升级自动重编。预编译 deb 见 [GitHub Releases](https://github.com/openhundun/artifact/releases)，构建见其目录内 README。
+- `rtl8852bu/` — RTL8852BU/RTL8832BU USB Wi-Fi 6 网卡驱动（上游 [morrownr/rtl8852bu-20250826](https://github.com/morrownr/rtl8852bu-20250826)），包目录自包含：`cd deb/rtl8852bu && ./sh.sh` 构建，包名/版本号自动取自上游 `dkms.conf`，安装即编译、内核升级自动重编
+
+预编译 deb 见 [GitHub Releases](https://github.com/openhundun/artifact/releases)。

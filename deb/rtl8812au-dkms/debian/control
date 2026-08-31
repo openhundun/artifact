@@ -1,8 +1,0 @@
-Package: rtl8812au-dkms
-Version: 5.6.4.2-1
-Architecture: all
-Maintainer: root <root@localhost>
-Homepage: https://github.com/aircrack-ng/rtl8812au
-Depends: dkms
-Recommends: linux-headers-generic | linux-headers-amd64 | linux-headers-arm64
-Description: DKMS driver for RTL8812AU/RTL8814AU 802.11ac USB adapters

@@ -1,0 +1,8 @@
+Package: @PKG@
+Version: @VER@-@REV@
+Architecture: all
+Maintainer: root <root@localhost>
+Homepage: @HOMEPAGE@
+Depends: @DEPENDS@
+Recommends: linux-headers-generic | linux-headers-amd64 | linux-headers-arm64
+Description: @DESCRIPTION@

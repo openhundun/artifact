@@ -1,9 +1,0 @@
-#!/bin/sh
-set -e
-
-case "${1}" in
-remove | purge)
-    dkms remove -m rtl8812au -v 5.6.4.2 --all > /dev/null 2>&1 || true
-    ;;
-esac
-exit 0

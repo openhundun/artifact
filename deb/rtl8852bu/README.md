@@ -1,15 +1,21 @@
-# rtl8852bu-dkms
+# rtl8852bu
+
+包名与版本号取自上游 [morrownr/rtl8852bu-20250826](https://github.com/morrownr/rtl8852bu-20250826) 的 `dkms.conf`(`PACKAGE_NAME` / `PACKAGE_VERSION`)。
 
 ## Build
 
+在本目录下运行:
+
 ```sh
-./build.sh
+./sh.sh
 ```
+
+构建产物:`rtl8852bu_<上游版本>-1_all.deb`(当前上游版本 `1.19.21-86`)。
 
 ## Install
 
 ```sh
-sudo apt install --reinstall ./rtl8852bu-dkms_20250826-1_all.deb
+sudo apt install --reinstall ./rtl8852bu_*.deb
 ```
 
 ## Use as client
