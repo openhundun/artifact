@@ -1,7 +1,7 @@
 FROM docker.io/library/ubuntu:24.04
 ARG TARGETARCH
-ENV TZ="Asia/Shanghai"
 ENV TIME_STYLE="+%Y-%m-%d %H:%M:%S"
+ENV TZ="Asia/Shanghai"
 RUN \
     MIRROR="$(case "${TARGETARCH}" in amd64) echo http://mirrors.ustc.edu.cn/ubuntu;; arm64) echo http://mirrors.ustc.edu.cn/ubuntu-ports;; *) exit 1;; esac)" && \
     tee /etc/apt/sources.list.d/ubuntu.sources > /dev/null <<EOF

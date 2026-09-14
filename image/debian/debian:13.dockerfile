@@ -1,6 +1,6 @@
 FROM docker.io/library/debian:13-slim
-ENV TZ="Asia/Shanghai"
 ENV TIME_STYLE="+%Y-%m-%d %H:%M:%S"
+ENV TZ="Asia/Shanghai"
 RUN tee /etc/apt/sources.list.d/debian.sources > /dev/null <<EOF
 Types: deb
 URIs: http://mirrors.ustc.edu.cn/debian
