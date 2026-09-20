@@ -3,11 +3,17 @@ name: publish
 on:
   workflow_dispatch:
     inputs:
-      image:
-        description: 镜像选择器。dockerfile 家族填家族名（如 ubuntu-llvm-zig）；nix 家族填 name:tag（如 nix-python:2.35-3.13）；all 表示全部
+      group:
+        description: 发布分组。dockerfile 家族按家族名前缀分组，nix 为独立家族
         required: true
         default: all
-        type: string
+        type: choice
+        options:
+          - all
+          - alpine
+          - debian
+          - ubuntu
+          - nix
 
 permissions:
   contents: read
@@ -31,25 +37,29 @@ jobs:
       - name: Log in to the Container registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | sudo -n env DOCKER_CONFIG=/tmp/ci-docker docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-      - name: Publish images
+      - name: Publish
         env:
-          IMAGE: ${{ inputs.image }}
+          GROUP: ${{ inputs.group }}
+          ACTOR: ${{ github.actor }}
           IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
         run: |
           set -euo pipefail
-          echo "selector = ${IMAGE}"
+          publish() {
+              sudo -n env DOCKER_CONFIG=/tmp/ci-docker IMAGE_REGISTRY="${IMAGE_REGISTRY}" bash "$@"
+          }
+          echo "group    = ${GROUP}"
           echo "registry = ${IMAGE_REGISTRY}"
-          echo "actor    = ${{ github.actor }}"
+          echo "actor    = ${ACTOR}"
           echo
-
-          if [ "${IMAGE}" = "all" ]; then
-            echo "== dockerfile 家族 =="
-            sudo -n env DOCKER_CONFIG=/tmp/ci-docker IMAGE_REGISTRY="${IMAGE_REGISTRY}" bash image/sh.sh publish all
-            echo
-            echo "== nix 家族 =="
-            sudo -n env DOCKER_CONFIG=/tmp/ci-docker IMAGE_REGISTRY="${IMAGE_REGISTRY}" bash image/nix/sh.sh publish all
-          elif compgen -G "image/${IMAGE}/*.dockerfile" > /dev/null; then
-            sudo -n env DOCKER_CONFIG=/tmp/ci-docker IMAGE_REGISTRY="${IMAGE_REGISTRY}" bash image/sh.sh publish "${IMAGE}"
-          else
-            sudo -n env DOCKER_CONFIG=/tmp/ci-docker IMAGE_REGISTRY="${IMAGE_REGISTRY}" bash image/nix/sh.sh publish "${IMAGE}"
-          fi
+          case "${GROUP}" in
+          all)
+              publish image/sh.sh publish all
+              publish image/nix/sh.sh publish all
+              ;;
+          nix)
+              publish image/nix/sh.sh publish all
+              ;;
+          *)
+              publish image/sh.sh publish "${GROUP}"
+              ;;
+          esac

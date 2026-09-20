@@ -82,22 +82,27 @@
 
 ## 构建与推送
 
+发布走 GitHub Actions:`.github/workflows/publish.yaml` 手动触发,选发布分组(`all` / `alpine` / `debian` / `ubuntu` / `nix`),在自托管 runner 上构建并推送。
+
+- **分组即家族名前缀**:`debian` 覆盖 `debian`、`debian-go`、`debian-jdk`、`debian-jdk-maven` …;`alpine`、`ubuntu` 同理。nix 家族是独立一组,镜像清单由 flake 实时枚举。
+- **可见性**:workflow 用 `GITHUB_TOKEN` 推送,**包由 workflow 创建时继承仓库可见性(public)并自动关联仓库**,不需要任何 label / annotation。已经存在的包不会因此改变可见性;把包删掉、再由 workflow 重建,就会变成 public(实测)。
+- **凭据隔离**:runner 上只拷 `/root/.docker/buildx`(builder 定义),不拷 `config.json`(那份存着本机 PAT),所以 CI 登录不会覆盖本机凭据。
+- **重推流量**:包删除后 registry 仍保留底层 blob,实测重推一个 625.3 MiB 的包上行 0.0 MiB。
+
+手工发布(需要本机已有 registry 凭据):
+
 ```sh
-cd <仓库根>
-docker buildx build \
-    --builder multiarch \
-    --file image/<name>/<name>:<tag>.dockerfile \
-    --platform linux/amd64,linux/arm64 \
-    --provenance=false \
-    --sbom=false \
-    --annotation "index:org.opencontainers.image.source=https://github.com/openhundun/artifact" \
-    --tag 192.168.100.101:3000/openhundun/<name>:<tag> \
-    --push \
-    .
+IMAGE_REGISTRY=ghcr.io/openhundun bash image/sh.sh list debian                         # 看分组包含哪些镜像
+IMAGE_REGISTRY=ghcr.io/openhundun bash image/sh.sh publish debian                      # 分组
+IMAGE_REGISTRY=ghcr.io/openhundun bash image/sh.sh publish ubuntu-llvm-zig             # 单个家族
+IMAGE_REGISTRY=ghcr.io/openhundun bash image/sh.sh publish ubuntu-llvm-zig:24-21-0.16  # 单个镜像
+IMAGE_REGISTRY=ghcr.io/openhundun bash image/nix/sh.sh publish all                     # nix 家族
 ```
 
-- **ghcr 关联仓库必须靠 index 级 annotation,config label 不管用。** 对照实测(同一 Dockerfile、同一 builder、同一凭据,唯一变量是该 flag):只写 Dockerfile 里的 `LABEL`、或再加 `--provenance`、或改成单架构,三种都没关联;加了 `--annotation "index:org.opencontainers.image.source=..."` 的立刻关联成功。官方文档只在描述 `description` 时提到多架构走 `annotations`,`source` 没写,但实现走同一条路。config 里的 `LABEL` 仍然保留(标准 OCI 元数据,且 chainguard / uv 等是双写)。
+`list` / `build` / `publish` 都接受同样的选择器;`build` 只写构建缓存、不推送。`IMAGE_REGISTRY` 缺省 `ghcr.io/openhundun`,`BUILDX_BUILDER` 缺省 `multiarch`,`PLATFORMS` 缺省 `linux/amd64,linux/arm64`。
+
+**从 CLI 推送而不经过 workflow 时,必须让 index 携带 `org.opencontainers.image.source` 才会关联仓库** —— Dockerfile 里的 config `LABEL` 无效。对照实测(同一 Dockerfile、同一 builder、同一凭据,唯一变量是该 flag):只写 `LABEL`、或再叠加 `--provenance`、或改成单架构,三种都不关联;加上 `--annotation "index:org.opencontainers.image.source=…"` 的立刻关联成功。`image/sh.sh` 与 `image/nix/sh.sh` 都已把该 annotation 写进各自的推送路径。
+
 - builder `multiarch` 内配置了 `ghcr.io` → `192.168.100.101:3000` 的镜像映射,因此 Dockerfile 里保留最终形态的 `FROM ghcr.io/openhundun/...`,测试期自动命中 gitea。
-- 推送目标:gitea `192.168.100.101:3000/openhundun`(构建解析用)+ zot `192.168.100.101:5000/private`(交付,带 Trivy CVE 扫描);正式发布时改推 `ghcr.io/openhundun`。
-- 先推基础镜像,再推派生镜像。
-- nix 家族:`IMAGE_REGISTRY=<registry> bash image/nix/sh.sh publish <name>:<tag>`;`build` / `load` / `publish` 的第一个参数都接受 `all`,镜像清单由 flake 实时枚举。
+- 推送目标:gitea `192.168.100.101:3000/openhundun`(构建解析用)+ zot `192.168.100.101:5000/private`(交付,带 Trivy CVE 扫描);正式发布推 `ghcr.io/openhundun`。
+- `all` 按基础镜像在前、派生镜像在后的顺序推送。
