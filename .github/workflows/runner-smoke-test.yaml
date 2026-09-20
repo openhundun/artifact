@@ -1,0 +1,23 @@
+name: runner-smoke-test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  probe:
+    runs-on: [self-hosted, build]
+    steps:
+      - name: Log in to the Container registry
+        run: |
+          mkdir -p /tmp/ci-docker
+          echo "${{ secrets.GITHUB_TOKEN }}" | sudo -n env DOCKER_CONFIG=/tmp/ci-docker docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Build and push the probe image
+        run: |
+          mkdir -p /tmp/runner-smoke-test
+          printf 'hello\n' > /tmp/runner-smoke-test/payload
+          printf 'FROM scratch\nCOPY payload /payload\n' > /tmp/runner-smoke-test/Dockerfile
+          sudo -n env DOCKER_CONFIG=/tmp/ci-docker docker buildx build --builder multiarch --file /tmp/runner-smoke-test/Dockerfile --platform linux/amd64,linux/arm64 --provenance=false --sbom=false --tag "ghcr.io/${{ github.repository_owner }}/ci-visibility-probe:test" --push /tmp/runner-smoke-test
