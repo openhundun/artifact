@@ -11,10 +11,13 @@ jobs:
   probe:
     runs-on: [self-hosted, build]
     steps:
-      - name: Log in to the Container registry
+      - name: Prepare an isolated docker config that reuses the shared builder
         run: |
-          mkdir -p /tmp/ci-docker
-          echo "${{ secrets.GITHUB_TOKEN }}" | sudo -n env DOCKER_CONFIG=/tmp/ci-docker docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          sudo -n rm -rf /tmp/ci-docker
+          sudo -n mkdir -p /tmp/ci-docker
+          sudo -n cp -a /root/.docker/buildx /tmp/ci-docker/
+      - name: Log in to the Container registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | sudo -n env DOCKER_CONFIG=/tmp/ci-docker docker login ghcr.io -u "${{ github.actor }}" --password-stdin
       - name: Build and push the probe image
         run: |
           mkdir -p /tmp/runner-smoke-test
