@@ -109,6 +109,10 @@ function push() {
     local tag="${image#*:}"
     local arch_name="$(arch "${system}")"
     local tar="$(build_one "${image}" "${system}")"
+    if [ -z "${tar}" ] || [ ! -e "${tar}" ]; then
+        echo "ERROR: ${image} (${system}) 构建未产出镜像，跳过推送" >&2
+        return 1
+    fi
     skopeo copy \
         --format oci \
         "$(dest_tls)" \
