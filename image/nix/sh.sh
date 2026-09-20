@@ -55,13 +55,27 @@ function build_one() {
     "$(nix_cmd)" build --no-link --print-out-paths "${FLAKE_REF}#packages.${system}.\"${image}\""
 }
 
+function images_or_die() {
+    local selector="${1:?selector}"
+    local system="${2:-${SYSTEM_AMD64}}"
+    local images
+    images="$(each_image "${selector}" "${system}")"
+    if [ -z "${images}" ]; then
+        echo "ERROR: 选择器 ${selector} 没有匹配到任何镜像" >&2
+        return 1
+    fi
+    echo "${images}"
+}
+
 function build() {
     local selector="${1:?selector}"
     local system="${2:-${SYSTEM_AMD64}}"
-    each_image "${selector}" "${system}" | while IFS= read -r image; do
+    local images
+    images="$(images_or_die "${selector}" "${system}")"
+    while IFS= read -r image; do
         echo "==> ${image} (${system})" >&2
         build_one "${image}" "${system}"
-    done
+    done <<< "${images}"
 }
 
 function load() {
@@ -104,7 +118,10 @@ function push() {
 
 function publish() {
     local selector="${1:?selector}"
-    each_image "${selector}" "${SYSTEM_AMD64}" | while IFS= read -r image; do
+    local system="${SYSTEM_AMD64}"
+    local images
+    images="$(images_or_die "${selector}" "${system}")"
+    while IFS= read -r image; do
         echo "==> ${image}" >&2
         local name="${image%%:*}"
         local tag="${image#*:}"
@@ -116,7 +133,7 @@ function publish() {
             --tag "${REGISTRY}/${name}:${tag}" \
             "${REGISTRY}/${name}:${tag}-${ARCH_AMD64}" \
             "${REGISTRY}/${name}:${tag}-${ARCH_ARM64}"
-    done
+    done <<< "${images}"
 }
 
 case "${1:-}" in

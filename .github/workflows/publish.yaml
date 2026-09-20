@@ -48,7 +48,7 @@ jobs:
             echo
             echo "== nix 家族 =="
             sudo -n env DOCKER_CONFIG=/tmp/ci-docker IMAGE_REGISTRY="${IMAGE_REGISTRY}" bash image/nix/sh.sh publish all
-          elif [ -d "image/${IMAGE}" ]; then
+          elif compgen -G "image/${IMAGE}/*.dockerfile" > /dev/null; then
             sudo -n env DOCKER_CONFIG=/tmp/ci-docker IMAGE_REGISTRY="${IMAGE_REGISTRY}" bash image/sh.sh publish "${IMAGE}"
           else
             sudo -n env DOCKER_CONFIG=/tmp/ci-docker IMAGE_REGISTRY="${IMAGE_REGISTRY}" bash image/nix/sh.sh publish "${IMAGE}"

@@ -83,9 +83,15 @@ function build_one() {
 function build() {
     local selector="${1:?selector}"
     local mode="${2:?mode}"
-    each_image "${selector}" | while IFS= read -r image; do
+    local images
+    images="$(each_image "${selector}")"
+    if [ -z "${images}" ]; then
+        echo "ERROR: 选择器 ${selector} 没有匹配到任何镜像" >&2
+        return 1
+    fi
+    while IFS= read -r image; do
         build_one "${image}" "${mode}"
-    done
+    done <<< "${images}"
 }
 
 case "${1:-}" in
