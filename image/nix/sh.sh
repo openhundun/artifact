@@ -22,7 +22,7 @@ function help() {
     echo "usage: ${0} {list|build|load|publish} <image|all> [system]"
     echo "       ${0} -h | --help"
     echo
-    echo "image   形如 nix-python:2.35.2-3.13，all 表示全部镜像"
+    echo "image   形如 nix-python:2.35.2-3.13；也可只写 nix-python 表示该名字的全部 tag；all 表示全部镜像"
     echo "system  ${SYSTEM_AMD64} | ${SYSTEM_ARM64}"
     echo "registry 由 IMAGE_REGISTRY 覆盖，当前 ${REGISTRY}"
 }
@@ -35,11 +35,18 @@ function list() {
 function each_image() {
     local selector="${1:?selector}"
     local system="${2:-${SYSTEM_AMD64}}"
-    if [ "${selector}" = "all" ]; then
-        list "${system}"
-    else
-        echo "${selector}"
-    fi
+    local image
+    case "${selector}" in
+    all) list "${system}" ;;
+    *:*) echo "${selector}" ;;
+    *)
+        while IFS= read -r image; do
+            case "${image}" in
+            "${selector}":*) echo "${image}" ;;
+            esac
+        done <<< "$(list "${system}")"
+        ;;
+    esac
 }
 
 function build_one() {
