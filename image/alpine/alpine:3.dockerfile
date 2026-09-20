@@ -1,4 +1,5 @@
 FROM docker.io/library/alpine:3
+LABEL org.opencontainers.image.source="https://github.com/openhundun/artifact"
 ENV TIME_STYLE="+%Y-%m-%d %H:%M:%S"
 ENV TZ="Asia/Shanghai"
 RUN \

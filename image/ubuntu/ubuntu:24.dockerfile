@@ -1,4 +1,5 @@
 FROM docker.io/library/ubuntu:24.04
+LABEL org.opencontainers.image.source="https://github.com/openhundun/artifact"
 ARG TARGETARCH
 ENV TIME_STYLE="+%Y-%m-%d %H:%M:%S"
 ENV TZ="Asia/Shanghai"

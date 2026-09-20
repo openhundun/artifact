@@ -1,4 +1,5 @@
 FROM docker.io/library/debian:13-slim
+LABEL org.opencontainers.image.source="https://github.com/openhundun/artifact"
 ENV TIME_STYLE="+%Y-%m-%d %H:%M:%S"
 ENV TZ="Asia/Shanghai"
 RUN tee /etc/apt/sources.list.d/debian.sources > /dev/null <<EOF

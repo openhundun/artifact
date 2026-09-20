@@ -1,4 +1,5 @@
 FROM ghcr.io/openhundun/debian:13
+LABEL org.opencontainers.image.source="https://github.com/openhundun/artifact"
 ENV PATH="/usr/lib/llvm-21/bin:${PATH}"
 RUN \
     apt-get update && \
@@ -6,4 +7,3 @@ RUN \
     apt-get clean && \
     rm -rf /var/lib/apt/lists && \
     rm -rf /var/cache/apt/archives
-CMD ["clang", "--version"]

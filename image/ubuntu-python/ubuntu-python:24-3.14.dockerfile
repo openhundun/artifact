@@ -1,4 +1,5 @@
 FROM ghcr.io/openhundun/ubuntu:24
+LABEL org.opencontainers.image.source="https://github.com/openhundun/artifact"
 ARG TARGETARCH
 ARG PYTHON_URL_AMD64="https://registry.npmmirror.com/-/binary/python-build-standalone/20260825/cpython-3.14.7+20260825-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
 ARG PYTHON_URL_ARM64="https://registry.npmmirror.com/-/binary/python-build-standalone/20260825/cpython-3.14.7+20260825-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz"
@@ -13,4 +14,3 @@ RUN \
     curl -fsSL -o /tmp/python.tar.gz "${PYTHON_URL}" && \
     tar -C /opt/python --strip-components 1 --no-same-owner -xzf /tmp/python.tar.gz && \
     rm -rf /tmp/python.tar.gz
-CMD ["python3", "--version"]

@@ -1,4 +1,5 @@
 FROM ghcr.io/openhundun/debian-jdk:13-8
+LABEL org.opencontainers.image.source="https://github.com/openhundun/artifact"
 COPY --from=docker.io/library/maven:3.9.16-eclipse-temurin-8 /usr/share/maven /opt/maven
 ENV MAVEN_HOME="/opt/maven"
 ENV PATH="/opt/maven/bin:${PATH}"
@@ -21,4 +22,3 @@ RUN tee /opt/maven/conf/settings.xml > /dev/null <<EOF
     </mirrors>
 </settings>
 EOF
-CMD ["mvn", "-version"]

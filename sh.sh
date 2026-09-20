@@ -14,6 +14,9 @@ fmt() {
     fi
     for f in "${files[@]}"; do
         case "${f}" in
+        *.nix)
+            nixfmt --width 200 --indent 4 "${f}"
+            ;;
         *.py)
             uvx ruff check --select I --fix "${f}"
             uvx ruff format "${f}"
