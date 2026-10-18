@@ -8,7 +8,7 @@ readonly CHART_REGISTRY="${CHART_REGISTRY:-ghcr.io}"
 readonly CHART_REPOSITORY_OWNER="${CHART_REPOSITORY_OWNER:-openhundun}"
 
 function help() {
-    echo "USAGE: ${0} <job__check [step__xxx | all] | job__chart [step__xxx | all]>"
+    echo "USAGE: ${0} <job__check | job__chart> [step__xxx]"
 }
 
 function job__check() {

@@ -1,0 +1,14 @@
+Source: rndis-host
+Section: net
+Priority: optional
+Maintainer: root <root@localhost>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+
+Package: rndis-host
+Architecture: all
+Description: stable usb0 name for USB RNDIS uplink adapters
+ Ships a systemd .link file that matches Driver=rndis_host and pins
+ the interface name to usb0, so host-side configs (bridges, nft, dhcp)
+ survive adapter re-enumeration with randomized MAC addresses.

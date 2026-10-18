@@ -6,7 +6,7 @@ readonly ARG_STEP="${2:-}"
 readonly GIT_REPOSITORY_DIR="$(cd "$(dirname "$(dirname "${0}")")" && pwd)"
 
 function help() {
-    echo "USAGE: ${0} <job__rtl8852bu [step__xxx | all]>"
+    echo "USAGE: ${0} <job__rtl8852bu | job__rndis_host [step__xxx]>"
 }
 
 function job__rtl8852bu() {
@@ -78,7 +78,58 @@ function job__rtl8852bu() {
     esac
 }
 
+function job__rndis_host() {
+    function step__build() {
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends debhelper
+        local package_dir="${GIT_REPOSITORY_DIR}/deb/rndis-host"
+        local root="${GIT_REPOSITORY_DIR}/out/rndis-host"
+        local package_name="$(basename "${package_dir}")"
+        local package_version="1.0.0"
+        local revision="1"
+        local package_maintainer="$(sed -n 's|^Maintainer: ||p' "${package_dir}/debian/control" | head -1)"
+
+        rm -rf "${root}"
+        mkdir -p "${root}/source"
+        cp -a "${package_dir}/debian" "${root}/source/debian"
+        cp -a "${package_dir}/rootfs" "${root}/source/rootfs"
+
+        printf '%s (%s-%s) unstable; urgency=medium\n\n  * Ship systemd .link pinning RNDIS adapters to usb0.\n\n -- %s  %s\n' "${package_name}" "${package_version}" "${revision}" "${package_maintainer}" "$(date -R)" > "${root}/source/debian/changelog"
+        printf 'rootfs/etc /\n' > "${root}/source/debian/${package_name}.install"
+
+        cd "${root}/source"
+        dpkg-buildpackage -us -uc -b --ignore-builtin-builddeps
+
+        local package_file="${root}/${package_name}_${package_version}-${revision}_all.deb"
+        dpkg-deb --info "${package_file}" > "${root}/control.txt"
+        dpkg-deb --contents "${package_file}" > "${root}/contents.txt"
+        grep -q "10-usb0.link" "${root}/contents.txt"
+        echo "Built: ${package_file}"
+    }
+
+    function step__release() {
+        cd "${GIT_REPOSITORY_DIR}"
+        if ! gh release view latest > /dev/null 2>&1; then
+            gh release create latest --title "latest" --notes "1" --target "$(git rev-parse HEAD)"
+        fi
+        gh release upload latest --clobber out/rndis-host/*.deb
+        rm -rf out/rndis-host
+    }
+
+    function all() {
+        step__build
+        step__release
+    }
+
+    case "${ARG_STEP}" in
+    step__build) step__build ;;
+    step__release) step__release ;;
+    *) all ;;
+    esac
+}
+
 case "${ARG_JOB}" in
 job__rtl8852bu) job__rtl8852bu ;;
+job__rndis_host) job__rndis_host ;;
 *) help ;;
 esac

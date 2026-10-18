@@ -3,7 +3,7 @@
 ## Build
 
 ```sh
-bash deb/sh.sh rtl8852bu
+bash deb/sh.sh job__rtl8852bu step__build
 ```
 
 ## Install

@@ -38,7 +38,7 @@ readonly UBUNTU_DIR_LIST=(
 export PATH="${NIX_BIN}:${PATH}"
 
 function help() {
-    echo "USAGE: ${0} <job__nix [step__xxx | all] | job__alpine [step__xxx | all] | job__debian [step__xxx | all] | job__ubuntu [step__xxx | all]>"
+    echo "USAGE: ${0} <job__nix | job__alpine | job__debian | job__ubuntu> [step__xxx]"
 }
 
 function job__nix() {
