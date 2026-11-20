@@ -1,0 +1,26 @@
+defaults:
+  run:
+    shell: bash --noprofile --norc -euo pipefail {0}
+jobs:
+  oh-my-pi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - env:
+          OMP_PI_VERSION: ${{ inputs.version }}
+        run: bash schema/oh-my-pi/sh.sh job__oh-my-pi step__generate
+      - run: bash schema/oh-my-pi/sh.sh job__oh-my-pi step__commit
+      - run: bash schema/oh-my-pi/sh.sh job__oh-my-pi step__push
+    timeout-minutes: 10
+name: schema/oh-my-pi
+on:
+  schedule:
+    - { cron: 0 3 * * 1 }
+  workflow_dispatch:
+    inputs:
+      version: { default: "", type: string }
+permissions:
+  contents: write

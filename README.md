@@ -53,3 +53,15 @@
 | name                                                                                                                               | desc |
 | ---------------------------------------------------------------------------------------------------------------------------------- | ---- |
 | [`rtl8852bu_1.19.21-86-1_all.deb`](https://github.com/openhundun/artifact/releases/download/latest/rtl8852bu_1.19.21-86-1_all.deb) |      |
+
+## schema
+
+| name                                                                                                                  | desc |
+| --------------------------------------------------------------------------------------------------------------------- | ---- |
+| [`config.schema.json`](https://raw.githubusercontent.com/openhundun/artifact/main/schema/oh-my-pi/config.schema.json) |      |
+
+## json
+
+| name                                                                                                  | desc |
+| ----------------------------------------------------------------------------------------------------- | ---- |
+| [`models.json`](https://raw.githubusercontent.com/openhundun/artifact/main/json/oh-my-pi/models.json) |      |

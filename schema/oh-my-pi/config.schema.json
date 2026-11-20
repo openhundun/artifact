@@ -1,0 +1,4416 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "autolearn": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "After the agent stops, nudge it to capture lessons to memory and create/enhance isolated managed skills",
+          "title": "Auto-Learn (experimental)"
+        },
+        "autoContinue": {
+          "type": "boolean",
+          "default": false,
+          "description": "When on, auto-run one private capture turn at stop (uses extra tokens). When off, only standing auto-learn guidance remains.",
+          "title": "Auto-run capture at stop"
+        },
+        "minToolCalls": {
+          "type": "number",
+          "default": 5
+        }
+      },
+      "type": "object"
+    },
+    "shellPath": {
+      "type": "string"
+    },
+    "shellCommandPrefix": {
+      "type": "string"
+    },
+    "bash": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the bash tool for shell command execution",
+          "title": "Bash"
+        },
+        "allowCompoundCommands": {
+          "type": "boolean",
+          "default": false,
+          "description": "Evaluate literal && chains per command; unmatched commands use normal bash approval policy and mode",
+          "title": "Allow Compound Commands"
+        },
+        "autoBackground": {
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Automatically background long-running bash commands and deliver the result later",
+              "title": "Bash Auto-Background"
+            },
+            "thresholdMs": {
+              "type": "number",
+              "default": 60000
+            }
+          },
+          "type": "object"
+        },
+        "gitGuard": {
+          "type": "boolean",
+          "default": false,
+          "description": "Refuse git commands that discard or move shared work in a repository's main checkout: stash, reset --hard or to another commit, and checkout/switch/restore outside a merge or rebase conflict. In a linked worktree they run, saving uncommitted changes they discard first",
+          "title": "Git Guard"
+        },
+        "patterns": {
+          "type": "array",
+          "default": [],
+          "description": "Ordered bash command approval rules. Each item has match and approval fields; only '*' wildcards are supported.",
+          "title": "Bash Approval Patterns"
+        },
+        "allowedEnvVars": {
+          "type": "array",
+          "default": [],
+          "description": "Exact environment variable names allowed as leading KEY=VALUE prefixes when matching bash.patterns allow rules (no wildcards). Any value is accepted, so list only benign build/test variables; execution-altering variables (PATH, LD_PRELOAD, BASH_ENV, *_RUNNER, *_WRAPPER) allow arbitrary command execution.",
+          "title": "Bash Allowed Environment Variables"
+        },
+        "direnv": {
+          "type": "string",
+          "enum": ["auto", "off"],
+          "default": "auto",
+          "description": "Auto-load a repo's direnv/devenv `.envrc` into the bash session so devenv tools and env vars are present without manual `direnv exec`. Honors direnv's allow list: an `.envrc` you haven't `direnv allow`ed is never executed",
+          "title": "direnv Auto-Load"
+        },
+        "direnvLoadTimeoutMs": {
+          "type": "number",
+          "default": 30000,
+          "description": "Max wait for the first `direnv export` (a cold devenv shell can be slow); on timeout the session runs without the direnv env",
+          "title": "direnv Load Timeout (ms)"
+        }
+      },
+      "type": "object"
+    },
+    "bashInterceptor": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Block shell commands that have dedicated tools",
+          "title": "Bash Interceptor"
+        },
+        "patterns": {
+          "type": "array",
+          "default": [
+            {
+              "pattern": "^\\s*(?:(?:head|tail|less|more)\\s+|cat\\s+(?!\\s|(?:[02-9]>{1,2}\\|?\\s*[^\\s>|]\\S*\\s+)*(?:<<|1?>(?!&)|&>)))",
+              "tool": "read",
+              "message": "Use the `read` tool instead of cat/head/tail. It provides better context and handles binary files."
+            },
+            {
+              "pattern": "^\\s*(grep|rg|ripgrep|ag|ack)\\s+",
+              "tool": "grep",
+              "message": "Use the `grep` tool instead of grep/rg. It respects .gitignore and provides structured output."
+            },
+            {
+              "pattern": "^\\s*(find|fd|locate)\\s+.*(-name|-iname|-type|--type|-glob)",
+              "tool": "glob",
+              "message": "Use the `glob` tool instead of find/fd. It respects .gitignore and is faster for glob patterns."
+            },
+            {
+              "pattern": "^\\s*sed\\s+(-i|--in-place)",
+              "tool": "edit",
+              "message": "Use the `edit` tool instead of sed -i. It provides diff preview and fuzzy matching."
+            },
+            {
+              "pattern": "^\\s*perl\\s+.*-[pn]?i",
+              "tool": "edit",
+              "message": "Use the `edit` tool instead of perl -i. It provides diff preview and fuzzy matching."
+            },
+            {
+              "pattern": "^\\s*awk\\s+.*-i\\s+inplace",
+              "tool": "edit",
+              "message": "Use the `edit` tool instead of awk -i inplace. It provides diff preview and fuzzy matching."
+            },
+            {
+              "pattern": "^\\s*(?:(?:echo|printf)\\s+|cat\\s*<<|cat(?=\\s+(?:\\d+|&)?>)\\s+)(?:(?:\\\\[\\s\\S]|\\$\\((?:[^()\"'`]|\"[^\"]*\"|'[^']*'|`[^`]*`|\\([^()]*\\))*\\)|\\$\\{[^{}]*\\}|`[^`]*`|\\$(?!\\((?:[^()\"'`]|\"[^\"]*\"|'[^']*'|`[^`]*`|\\([^()]*\\))*\\)|\\{[^{}]*\\})|`(?![^`]*`)|[^\"'>;&|\\n\\\\$`]|(?<=[<>])&|(?<![<>])&(?=>)|(?<=(?:^|\\s)[02-9])>{1,2}\\|?|\"[^\"]*\"|'[^']*')|(?<!\\||>|(?:^|\\s)[02-9])>{1,2}\\|?\\s*(?:\"/dev/(?:null|tty|stdout|stderr)\"|'/dev/(?:null|tty|stdout|stderr)'|/dev/(?:null|tty|stdout|stderr))(?=[\\s;&|]|$))*(?<!\\||>|(?:^|\\s)[02-9])>{1,2}\\|?\\s*(?!(?:\"/dev/(?:null|tty|stdout|stderr)\"|'/dev/(?:null|tty|stdout|stderr)'|/dev/(?:null|tty|stdout|stderr))(?:[\\s;&|]|$))[$\\w./~\"'-]",
+              "tool": "write",
+              "message": "Use the `write` tool instead of echo/cat redirection. It handles encoding and provides confirmation. `write` replaces the whole file; to append to an existing file, use `edit` to insert after its last line."
+            },
+            {
+              "pattern": "^\\s*nohup\\s+|(?<!&)\\&\\s*$",
+              "tool": "bash",
+              "message": "Use `bash` with `name` instead of nohup or background shell syntax so the service stays observable and managed."
+            },
+            {
+              "pattern": "^\\s*(?:(?:bun|npm|pnpm|yarn)\\s+(?:run\\s+)?(?:dev|start)(?:\\s|$)|(?:vite|next\\s+dev|nuxt\\s+dev|nodemon|lldb|gdb|tail\\s+-f)(?:\\s|$)|docker\\s+compose\\s+up(?!.*(?:\\s-d(?:\\s|$)|--detach))(?:\\s|$))",
+              "tool": "bash",
+              "message": "Use `bash` with `name` for services, watchers, and debuggers; inspect with `read proc://<name>`."
+            },
+            {
+              "pattern": "^\\s*(?:(?:bun|npm|pnpm|yarn)\\s+(?:run\\s+)?\\S+|cargo\\s+watch|watchexec|pytest|vitest|jest|tsc)(?:.|\\n)*(?:--watch|-w)(?:\\s|$)",
+              "tool": "bash",
+              "message": "Use `bash` with `name` for watch mode so its output, input, and lifecycle stay managed."
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "shellMinimizer": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Compress verbose shell output (git, npm, cargo, etc.) before returning it to the agent",
+          "title": "Shell Minimizer"
+        },
+        "settingsPath": {
+          "type": "string"
+        },
+        "only": {
+          "type": "array",
+          "default": []
+        },
+        "except": {
+          "type": "array",
+          "default": []
+        },
+        "maxCaptureBytes": {
+          "type": "number",
+          "default": 4194304
+        },
+        "sourceOutlineLevel": {
+          "type": "string",
+          "enum": ["default", "aggressive"],
+          "default": "default",
+          "description": "Source outline mode for cat/read of source files: default or aggressive",
+          "title": "Shell Minimizer Source Outline"
+        },
+        "legacyFilters": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "edit": {
+      "additionalProperties": true,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["apply_patch", "hashline", "patch", "replace", "sloppy", "none"],
+          "default": "hashline",
+          "description": "Select the edit tool variant (replace, patch, hashline, or apply_patch); none removes the edit tool and keeps bash enabled",
+          "title": "Edit Mode"
+        },
+        "modelVariants": {
+          "type": "object",
+          "default": {}
+        },
+        "fuzzyMatch": {
+          "type": "boolean",
+          "default": true,
+          "description": "Accept high-confidence fuzzy matches for whitespace differences",
+          "title": "Fuzzy Match"
+        },
+        "fuzzyThreshold": {
+          "type": "number",
+          "default": 0.95,
+          "description": "Similarity threshold (0-1) for accepting fuzzy matches",
+          "title": "Fuzzy Match Threshold"
+        },
+        "streamingAbort": {
+          "type": "boolean",
+          "default": false,
+          "description": "Abort streaming edit tool calls when patch preview fails",
+          "title": "Abort on Failed Preview"
+        },
+        "recoverInlineEdits": {
+          "type": "boolean",
+          "default": true,
+          "description": "Execute edit payloads the model emits as plain text by converting them into edit tool calls",
+          "title": "Recover Inline Edit Payloads"
+        },
+        "blockAutoGenerated": {
+          "type": "boolean",
+          "default": true,
+          "description": "Prevent editing of files that appear to be auto-generated (protoc, sqlc, swagger, etc.)",
+          "title": "Block Auto-Generated Files"
+        },
+        "enforceSeenLines": {
+          "type": "boolean",
+          "default": true,
+          "description": "Reject edits anchored on lines a prior read/search never displayed in full",
+          "title": "Enforce Seen-Line Guard"
+        },
+        "blackbox": {
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Append full before/after source when an edit introduces an AST parse failure",
+              "title": "Record Parse Regressions"
+            }
+          },
+          "type": "object"
+        },
+        "autoRepair": {
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "When an edit breaks a file's AST parse, ask the smol model to fix the broken region (validated by re-parse; falls back to a warning)",
+              "title": "Auto-Repair Parse Regressions"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "workspace": {
+      "additionalProperties": true,
+      "properties": {
+        "additionalDirectories": {
+          "type": "array",
+          "default": [],
+          "description": "Extra workspace directories added to every session as additional roots (multi-root workspace). Managed live via /add-dir and /remove-dir. Paths resolve relative to cwd; absolute paths recommended. The agent is told these roots exist and can read/grep/glob them.",
+          "title": "Additional Workspace Dirs"
+        }
+      },
+      "type": "object"
+    },
+    "contextFiles": {
+      "additionalProperties": true,
+      "properties": {
+        "extra": {
+          "type": "array",
+          "default": [],
+          "description": "Extra instruction filenames loaded beside AGENTS.md. Use a JSON list of names, not paths, e.g. [\"AGENTS.local.md\"]; [] disables extras. Start a new session to load them.",
+          "title": "Extra Context Files"
+        }
+      },
+      "type": "object"
+    },
+    "contextPromotion": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Promote to the model's contextPromotionTarget on context overflow instead of compacting. Retry fallback switches are controlled by Retry Model Fallback",
+          "title": "Auto-Promote Context"
+        }
+      },
+      "type": "object"
+    },
+    "extendedContext": {
+      "type": "boolean",
+      "default": false,
+      "description": "Use larger context windows where supported; may incur premium pricing. Off keeps default or standard-pricing windows",
+      "title": "Extended Context"
+    },
+    "compaction": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically compact context when it gets too large",
+          "title": "Auto-Compact"
+        },
+        "experimentalContextManagement": {
+          "type": "boolean",
+          "default": false,
+          "description": "Keep persistent notes and searchable raw history across context windows.",
+          "title": "Notes-backed context windows (experimental)"
+        },
+        "midTurnEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check thresholds at safe mid-turn tool-loop boundaries before the next provider request; subagents always check, since their whole assignment is one turn",
+          "title": "Mid-Turn Compaction"
+        },
+        "methodOrder": {
+          "type": "array",
+          "default": ["remote", "snapcompact", "handoff", "shake", "soft"],
+          "description": "Preferred fallback order for automatic context maintenance; unavailable or failed methods advance to the next choice",
+          "title": "Compaction Method Order"
+        },
+        "thresholdPercent": {
+          "type": "number",
+          "default": -1,
+          "description": "Percent threshold for context maintenance; set to Default to use legacy reserve-based behavior",
+          "title": "Compaction Threshold"
+        },
+        "thresholdTokens": {
+          "type": "number",
+          "default": -1,
+          "description": "Fixed token limit for context maintenance; overrides percentage if set",
+          "title": "Compaction Token Limit"
+        },
+        "modelThresholds": {
+          "type": "object",
+          "default": {}
+        },
+        "modelThresholdsEnabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "handoffSaveToDisk": {
+          "type": "boolean",
+          "default": false,
+          "description": "Save generated handoff documents to markdown files for the auto-handoff flow",
+          "title": "Save Handoff Docs"
+        },
+        "remoteStreamingV2Enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use Responses streaming compaction for compatible remote compaction models",
+          "title": "Remote Compaction V2"
+        },
+        "asyncEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Speculatively summarize in the background as context nears the compaction threshold, then splice the ready result in when the threshold is crossed",
+          "title": "Async Compaction"
+        },
+        "reserveTokens": {
+          "type": "number"
+        },
+        "keepRecentTokens": {
+          "type": "number",
+          "default": 20000
+        },
+        "autoContinue": {
+          "type": "boolean",
+          "default": true
+        },
+        "remoteEndpoint": {
+          "type": "string"
+        },
+        "v2RetainedMessageBudget": {
+          "type": "number",
+          "default": 64000
+        },
+        "idleEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Compact context while idle when token count exceeds threshold",
+          "title": "Idle Compaction"
+        },
+        "idleThresholdTokens": {
+          "type": "number",
+          "default": 200000,
+          "description": "Token count above which idle compaction triggers",
+          "title": "Idle Compaction Threshold"
+        },
+        "idleTimeoutSeconds": {
+          "type": "number",
+          "default": 300,
+          "description": "Seconds to wait while idle before compacting; with a 1-hour prompt cache, compaction instead runs just before the cache expires",
+          "title": "Idle Compaction Delay"
+        },
+        "supersedeReads": {
+          "type": "boolean",
+          "default": true,
+          "description": "Prune older read results when the same file is read again (cache-aware, runs every turn)",
+          "title": "Supersede Stale Reads"
+        },
+        "dropUseless": {
+          "type": "boolean",
+          "default": true,
+          "description": "Prune tool results flagged contextually useless (no matches, timed-out waits) once consumed (cache-aware)",
+          "title": "Elide Uneventful Results"
+        }
+      },
+      "type": "object"
+    },
+    "snapcompact": {
+      "additionalProperties": true,
+      "properties": {
+        "systemPrompt": {
+          "type": "string",
+          "enum": ["none", "agents-md", "all"],
+          "default": "none",
+          "description": "Experimental: render selected system prompt text as dense PNG image(s) and attach to the first user message (vision models only). Saves tokens; loses prompt caching for imaged text.",
+          "title": "Snapcompact System Prompt"
+        },
+        "toolResults": {
+          "type": "boolean",
+          "default": false,
+          "description": "Experimental: render large tool results, the newest one included, as dense PNG image(s) instead of text (vision models only). Saves tokens on accumulated search and command output; read results stay text unless the model is known to edit exactly from images.",
+          "title": "Snapcompact Tool Results"
+        },
+        "shape": {
+          "type": "string",
+          "enum": ["auto", "8x8r-bw", "8x8r-sent", "8x8u-bw", "8x8u-sent", "6x6u-bw", "6x6u-sent", "5x8-bw", "5x8-sent", "6x12-dim", "8x13-bw", "8on16-bw", "8on22-bw", "11on16-bw", "silver16-bw", "doc-8on16-bw", "doc-8on16-sent", "doc-8on16-sent-dim"],
+          "default": "auto",
+          "description": "Frame shape snapcompact prints text with (compaction archive and inline imaging). Auto picks a shape tuned for the current model.",
+          "title": "Snapcompact Shape"
+        }
+      },
+      "type": "object"
+    },
+    "tools": {
+      "additionalProperties": true,
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["auto", "native", "glm", "hermes", "kimi", "xml", "anthropic", "deepseek", "harmony", "qwen3", "gemini", "gemma", "minimax"],
+          "default": "auto",
+          "description": "Controls how tools are exposed to the model. Auto uses provider-native tool calls unless the selected model is marked as not supporting them, then falls back to the GLM owned dialect. Native forces provider-native tools; the other values force the named owned dialect.",
+          "title": "Tool Calling Mode"
+        },
+        "artifactSpillThreshold": {
+          "type": "number",
+          "default": 50,
+          "description": "Tool output above this size is saved as an artifact; tail is kept inline",
+          "title": "Artifact Spill Threshold (KB)"
+        },
+        "artifactTailBytes": {
+          "type": "number",
+          "default": 20,
+          "description": "Amount of tail content kept inline when output spills to artifact",
+          "title": "Artifact Tail Size (KB)"
+        },
+        "artifactHeadBytes": {
+          "type": "number",
+          "default": 20,
+          "description": "Amount of head content kept inline alongside the tail when output spills to artifact (middle elision). 0 disables — keep tail only.",
+          "title": "Artifact Head Size (KB)"
+        },
+        "outputMaxColumns": {
+          "type": "number",
+          "default": 768,
+          "description": "Per-line byte cap for streaming tool outputs (bash, python, js eval) and `read`. Lines wider than this are ellipsis-truncated; remaining bytes up to the next newline are dropped. 0 disables.",
+          "title": "Output Column Cap"
+        },
+        "artifactTailLines": {
+          "type": "number",
+          "default": 500,
+          "description": "Maximum lines of tail content kept inline when output spills to artifact",
+          "title": "Artifact Tail Lines"
+        },
+        "artifactMaxBytes": {
+          "type": "number",
+          "default": 16,
+          "description": "Maximum size of the artifact file saved for streaming tool output (bash, python, js eval). Larger output keeps its beginning (up to 3 MB) and its most recent remainder, with a truncation notice between them. 0 = unlimited.",
+          "title": "Artifact File Cap (MB)"
+        },
+        "approval": {
+          "type": "object",
+          "default": {},
+          "description": "Per-tool approval policies. Set to 'allow' to auto-approve, 'prompt' to require confirmation, or 'deny' to block. Overrides are honored in every approval mode.",
+          "title": "Tool Approval Policies"
+        },
+        "approvalMode": {
+          "type": "string",
+          "enum": ["always-ask", "always-ask-cached", "write", "yolo"],
+          "default": "yolo",
+          "description": "Default approval behavior for tool calls. 'Always ask' auto-approves read-only tools only. 'Ask and remember' also asks before file reads, and can remember a file or folder. 'Write' auto-approves read and workspace-write tools. 'Yolo' auto-approves all tiers; user policy may still prompt or block.",
+          "title": "Tool Approval"
+        },
+        "restrictedFolders": {
+          "type": "array",
+          "default": [],
+          "description": "Folders where every read, write, edit, search, or command needs an explicit approval, whatever the approval mode or a remembered grant. The folder and everything under it is restricted; commands are matched by the directory they run in. A JSON list of paths, e.g. [\"~/secrets\"].",
+          "title": "Restricted Folders"
+        },
+        "intentTracing": {
+          "type": "boolean",
+          "default": true,
+          "description": "Ask the agent to describe the intent of each tool call before executing it. Unset: on in the interactive TUI, off in print, RPC, ACP, and SDK sessions",
+          "title": "Intent Tracing"
+        },
+        "abortOnFabricatedResult": {
+          "type": "boolean",
+          "default": true,
+          "description": "With in-band tool calls, stop the model immediately when it starts hallucinating a tool result mid-turn. Disable to let the model finish generating and discard the fabricated continuation instead.",
+          "title": "Abort On Fabricated Tool Result"
+        },
+        "speculativeExecution": {
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable the discard-safe first slice: validated local reads through direct read calls and nested eval. Network requests, provider completions, and live filesystem writes are not part of this baseline.",
+              "title": "Experimental Speculative Execution"
+            },
+            "maxInFlight": {
+              "type": "number",
+              "default": 2,
+              "description": "Maximum number of validated local reads allowed to run before normal dispatch.",
+              "title": "Speculative Execution Concurrency"
+            }
+          },
+          "type": "object"
+        },
+        "maxTimeout": {
+          "type": "number",
+          "default": 0,
+          "description": "Maximum timeout in seconds the agent can set for any tool (0 = no limit)",
+          "title": "Max Tool Timeout"
+        },
+        "xdev": {
+          "type": "boolean",
+          "default": true,
+          "description": "Mount rarely-used (discoverable) tools under xd:// device URLs driven via read/write instead of shipping their schemas on every request. Sessions whose explicit tool list grants read but omits write mount devices through a device-only write transport (only local:// scratch stays writable besides devices). Disable to expose every enabled tool top-level.",
+          "title": "xd:// Tools"
+        },
+        "xdevDocs": {
+          "type": "string",
+          "enum": ["inline", "builtins", "catalog"],
+          "default": "catalog",
+          "description": "Choose which mounted-device docs and schemas are inlined in the system prompt. Built-ins keeps core tools inline while MCP and extension tools stay on-demand.",
+          "title": "xd:// Prompt Docs"
+        },
+        "xdevInlineDevices": {
+          "type": "array",
+          "default": [],
+          "description": "When xd:// Prompt Docs is Built-ins Only, inline dynamic devices whose names match these glob patterns (for example mcp__context_mode_*). Catalog Only ignores this setting.",
+          "title": "xd:// Inline Devices"
+        },
+        "xdevNotices": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show an `xd://: mounted …` notice when MCP or extension tools are mounted or unmounted. The model still learns of the change with its next prompt.",
+          "title": "xd:// Mount Notices"
+        }
+      },
+      "type": "object"
+    },
+    "branchSummary": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Prompt to summarize when leaving a branch",
+          "title": "Branch Summaries"
+        },
+        "reserveTokens": {
+          "type": "number",
+          "default": 16384
+        }
+      },
+      "type": "object"
+    },
+    "eval": {
+      "additionalProperties": true,
+      "properties": {
+        "py": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow the eval tool to dispatch Python cells to the IPython kernel",
+          "title": "Python Eval Backend"
+        },
+        "js": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow the eval tool to dispatch JavaScript cells to the in-process runtime",
+          "title": "JavaScript Eval Backend"
+        },
+        "autoProvision": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically create the managed JavaScript eval package environment on first install",
+          "title": "Eval Environment Provisioning"
+        },
+        "tools": {
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Let eval cells define tools (@tool in Python, tool(fn) in JS) that task, agent(), and workpool() subagents can call",
+              "title": "Eval-Defined Tools"
+            }
+          },
+          "type": "object"
+        },
+        "workpool": {
+          "additionalProperties": true,
+          "properties": {
+            "freshAgents": {
+              "type": "boolean",
+              "default": false,
+              "description": "Spawn a new subagent for every workpool item instead of reusing workers or batching queued items",
+              "title": "Fresh Workpool Agents"
+            }
+          },
+          "type": "object"
+        },
+        "autoBackground": {
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Automatically background long-running eval cells and deliver the result later",
+              "title": "Eval Auto-Background"
+            },
+            "thresholdMs": {
+              "type": "number",
+              "default": 60000
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "python": {
+      "additionalProperties": true,
+      "properties": {
+        "kernelMode": {
+          "type": "string",
+          "enum": ["session", "per-call"],
+          "default": "session",
+          "description": "Keep the IPython kernel alive across eval calls or start fresh each time",
+          "title": "Python Kernel Mode"
+        },
+        "interpreter": {
+          "type": "string",
+          "default": "",
+          "description": "Optional path to an exact Python executable. When set, automatic Python runtime discovery is skipped.",
+          "title": "Python Interpreter"
+        }
+      },
+      "type": "object"
+    },
+    "lsp": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Language-server integration: the lsp tool, diagnostics on write/edit, and format on write (--no-lsp disables for the run)",
+          "title": "LSP"
+        },
+        "lazy": {
+          "type": "boolean",
+          "default": true,
+          "description": "Start language servers on first use (lsp tool or editing a matching file type) instead of at session startup",
+          "title": "Lazy LSP Startup"
+        },
+        "shared": {
+          "type": "boolean",
+          "default": true,
+          "description": "Start language servers through the per-project daemon broker. Each connection gets its own server. While another omp instance in the project is running, a released server stays warm and the next connection reuses it instead of cold-starting (falls back to private servers when unavailable)",
+          "title": "Shared Language Servers"
+        },
+        "formatOnWrite": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically format code files using LSP after writing",
+          "title": "Format on Write"
+        },
+        "diagnosticsOnWrite": {
+          "type": "boolean",
+          "default": true,
+          "description": "Return LSP diagnostics after writing code files",
+          "title": "Diagnostics on Write"
+        },
+        "diagnosticsOnEdit": {
+          "type": "boolean",
+          "default": false,
+          "description": "Return LSP diagnostics after editing code files",
+          "title": "Diagnostics on Edit"
+        },
+        "diagnosticsDeduplicate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Suppress post-edit LSP diagnostics already shown for a file; only surface new or changed ones",
+          "title": "Deduplicate Diagnostics"
+        },
+        "requestTimeout": {
+          "type": "number",
+          "default": 10,
+          "description": "Seconds to wait for a language server's diagnostics, hover and other answers when the agent sets no timeout; late post-edit diagnostics wait at least this long. Raise it for servers that are slow on a cold start. The lsp tool's timeout argument can still raise or lower it per call",
+          "title": "Request Timeout"
+        }
+      },
+      "type": "object"
+    },
+    "task": {
+      "additionalProperties": true,
+      "properties": {
+        "isolation": {
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Allow per-task isolation with `isolated: true`; tasks without it run in the shared checkout",
+              "title": "Allow Isolated Subagents"
+            },
+            "apply": {
+              "type": "boolean",
+              "default": true,
+              "description": "Automatically apply successful isolated task changes to the parent checkout; disable to retain patch or branch artifacts",
+              "title": "Apply Isolated Changes"
+            },
+            "merge": {
+              "type": "string",
+              "enum": ["patch", "branch"],
+              "default": "patch",
+              "description": "How isolated task changes are integrated (patch apply or branch merge)",
+              "title": "Isolation Merge Strategy"
+            },
+            "commits": {
+              "type": "string",
+              "enum": ["generic", "ai"],
+              "default": "generic",
+              "description": "Commit message style for nested repo changes (generic or AI-generated)",
+              "title": "Isolation Commit Style"
+            }
+          },
+          "type": "object"
+        },
+        "eager": {
+          "type": "string",
+          "enum": ["default", "preferred", "always"],
+          "default": "default",
+          "description": "How strongly to push the main agent to delegate work; subagents keep the model's own policy",
+          "title": "Prefer Task Delegation"
+        },
+        "autoParallel": {
+          "type": "string",
+          "enum": ["off", "suggest", "on"],
+          "default": "off",
+          "description": "Ask the native judge resolved through the 'judge' role which parts of each new top-level prompt can run concurrently. Needs a native judge and the task tool; without them nothing is judged.",
+          "title": "Auto Parallel"
+        },
+        "batch": {
+          "type": "boolean",
+          "default": true,
+          "description": "Switch the task tool to its batch shape: one call carries { context, tasks[] } — one subagent per item, with an optional per-item agent (defaulting to the session spawn-policy agent), per-item isolation, and a required shared context prepended to every assignment. With async.enabled=true, each spawn runs as an independent background agent with the normal idle/parked lifecycle; otherwise the call blocks for merged results. Disable to restore the flat single-spawn schema.",
+          "title": "Batch Task Calls"
+        },
+        "steps": {
+          "type": "boolean",
+          "default": false,
+          "description": "Spawns take ordered `steps` instead of one `task`: the subagent gets the first step, then each next one once it finishes the previous; past 4 steps, earlier messages carry two or more. The last step's result is the task's result.",
+          "title": "Sequential Task Steps"
+        },
+        "structured": {
+          "type": "boolean",
+          "default": false,
+          "description": "Expose outputSchema/schemaMode on the task tool and honor agent output schemas; a subagent with a schema returns its result through the yield tool, validated against it. Off: task subagents ignore schemas, except agents whose definition sets structured: true. A subagent without a schema has no yield tool and returns its final message. Eval agent()/workpool spawns always honor schemas.",
+          "title": "Structured Task Results"
+        },
+        "speculativeLaunch": {
+          "type": "boolean",
+          "default": true,
+          "description": "Start each batch subagent as soon as its tasks[] item finishes streaming instead of waiting for the whole task call. Launched agents are aborted if the finished call fails validation, is blocked, or its arguments change. Requires auto-allowed task approval and no extension tool lifecycle handlers.",
+          "title": "Speculative Task Launch"
+        },
+        "enableEffort": {
+          "type": "boolean",
+          "default": false,
+          "description": "Expose the optional effort parameter on task spawns, allowing callers to override each subagent's thinking level",
+          "title": "Per-Task Effort"
+        },
+        "perCallModel": {
+          "type": "string",
+          "enum": ["off", "eval", "on"],
+          "default": "off",
+          "description": "Whether a subagent call may pick its model with one exact provider/model-id[@upstream][:level] selector. An @upstream pin is part of the model identity and is supported only by aggregators. Only models the configuration already routes to are accepted. Project settings can turn it off but not on, and never approve a model.",
+          "title": "Per-Call Model"
+        },
+        "perCallModelAllow": {
+          "type": "array",
+          "default": [],
+          "description": "Exact selectors: `provider/model-id`, including `@upstream` only for a pinned OpenRouter/Vercel route (e.g. `openrouter/x@y`). When set, a per-call model must also be listed here. Empty: every model the configuration grants. A project list can only narrow this one.",
+          "title": "Per-Call Model Allowlist"
+        },
+        "maxConcurrency": {
+          "type": "number",
+          "default": 32,
+          "description": "Maximum number of subagents running concurrently",
+          "title": "Max Concurrent Tasks"
+        },
+        "workerThreads": {
+          "type": "number",
+          "default": 4,
+          "description": "Maximum worker threads for subagents. Up to 8 concurrent subagents run on the main thread; at 9 one worker joins, and one more each time the count doubles (18, 36, 72). Workers stop a minute after no subagent is live in them; 0 keeps every subagent on the main thread",
+          "title": "Subagent Worker Threads"
+        },
+        "enableLsp": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run LSP formatting and diagnostics on subagent edits. Off by default to keep subagents cheap; the lsp tool stays available to them either way.",
+          "title": "LSP Edit Checks in Subagents"
+        },
+        "crossInstance": {
+          "type": "boolean",
+          "default": false,
+          "description": "Let other omp instances in this folder read agent outputs and send messages that can wake agents",
+          "title": "Cross-Instance Agent Messaging"
+        },
+        "maxRecursionDepth": {
+          "type": "number",
+          "default": 2,
+          "description": "How many levels deep subagents can spawn their own subagents",
+          "title": "Max Task Recursion"
+        },
+        "maxRuntimeMs": {
+          "type": "number",
+          "default": 0,
+          "description": "Hard wall-clock limit per subagent (ms). 0 disables it. Defense-in-depth against provider-side stream hangs that escape the inference-layer watchdog; triggers a normal subagent abort with a 'timed out' reason.",
+          "title": "Max Subagent Runtime"
+        },
+        "completionProbe": {
+          "type": "boolean",
+          "default": true,
+          "description": "Ask a working subagent, through a cached side request like /btw, to estimate how complete its task is: after 2, 5, 10 and 30 more minutes, then hourly. The estimate shows next to the subagent in wait and task views. Only subagents spawned by the main agent of an interactive session are asked; print, RPC, ACP and SDK runs never probe.",
+          "title": "Subagent Completion Probe"
+        },
+        "agentIdleTtlMs": {
+          "type": "number",
+          "default": 420000,
+          "description": "How long an idle subagent stays live in memory before being parked to disk (ms). Parked agents are revived automatically when messaged or resumed. 0 keeps idle agents live until exit.",
+          "title": "Agent Idle TTL"
+        },
+        "softRequestBudget": {
+          "type": "number",
+          "default": 200,
+          "description": "Soft per-subagent request budget (assistant requests per run). Crossing it injects a wrap-up steering notice (see task.softRequestBudgetNotice); at 1.5x the budget the run is force-stopped and the agent must hand back its partial findings. 0 disables the guard. Bundled scout/sonic agents cap out at a lower built-in budget, so a value below that cap still applies to them. A task.agentSoftRequestBudget entry replaces this budget for the agent it names.",
+          "title": "Soft Subagent Request Budget"
+        },
+        "agentSoftRequestBudget": {
+          "type": "object",
+          "default": {}
+        },
+        "softRequestBudgetNotice": {
+          "type": "boolean",
+          "default": true,
+          "description": "Inject one steering notice when a subagent crosses its soft request budget, asking it to wrap up before the 1.5x forced-yield stop.",
+          "title": "Soft Request Budget Notice"
+        },
+        "maxEffort": {
+          "type": "string",
+          "enum": ["minimal", "low", "medium", "high", "xhigh", "max"],
+          "default": "max",
+          "description": "Maximum reasoning effort allowed for the task tool's per-spawn effort hint or a per-call model. An explicit `:level` is clamped to the highest supported effort at or below this ceiling, and an omitted `:level` inherits the agent's thinking level capped at this value; cold revival re-applies the cap. Unset, `:inherit` and `:off` keep their existing meaning. A per-call model must support an effort at or below this ceiling; the default preserves the model's full range.",
+          "title": "Maximum Per-Spawn Effort"
+        },
+        "disabledAgents": {
+          "type": "array",
+          "default": []
+        },
+        "agentModelOverrides": {
+          "type": "object",
+          "default": {}
+        },
+        "agentServiceTierOverrides": {
+          "type": "object",
+          "default": {}
+        },
+        "agentCompactionThresholdOverrides": {
+          "type": "object",
+          "default": {}
+        },
+        "agentAccountPools": {
+          "type": "object",
+          "default": {}
+        },
+        "agentPrewalk": {
+          "type": "object",
+          "default": {}
+        },
+        "agentPrewalkAuto": {
+          "type": "object",
+          "default": {}
+        },
+        "agentAdvisor": {
+          "type": "object",
+          "default": {}
+        },
+        "prewalk": {
+          "type": "boolean",
+          "default": false,
+          "description": "Arm prewalk for the bundled generic `task` subagent: it starts on its resolved model, plans and begins the implementation, then hands off to the 'smol' role at its first edit/write. Per-agent overrides (task.agentPrewalk, configured from the /agents hub) and user agent `prewalk` frontmatter apply regardless of this toggle.",
+          "title": "Generic Task Prewalk"
+        },
+        "showResolvedModelBadge": {
+          "type": "boolean",
+          "default": false,
+          "description": "Display the actual model ID used by each subagent in the task widget status line",
+          "title": "Show Resolved Model Badge"
+        }
+      },
+      "type": "object"
+    },
+    "isolation": {
+      "additionalProperties": true,
+      "properties": {
+        "backend": {
+          "type": "string",
+          "enum": ["auto", "apfs", "btrfs", "zfs", "reflink", "overlayfs", "projfs", "block-clone", "rcopy"],
+          "default": "auto",
+          "description": "Backend used for subagent isolation and worktree cloning",
+          "title": "Isolation Backend"
+        }
+      },
+      "type": "object"
+    },
+    "worktree": {
+      "additionalProperties": true,
+      "properties": {
+        "clone": {
+          "type": "boolean",
+          "default": true,
+          "description": "New worktrees from `github pr_checkout` and `git worktree add` in bash start as a copy-on-write clone of the current checkout so ignored build artifacts (node_modules, target) carry over; falls back to a plain checkout when the filesystem cannot clone",
+          "title": "Clone Checkout into Worktrees"
+        },
+        "cleanSource": {
+          "type": "boolean",
+          "default": false,
+          "description": "When creating a worktree with `/wt`, reset tracked changes and remove untracked files from the original checkout after carrying them over",
+          "title": "Clean Source Checkout on /wt"
+        },
+        "onStart": {
+          "type": "string",
+          "enum": ["off", "ask", "create"],
+          "default": "off",
+          "description": "Whether fresh interactive sessions start in a new linked worktree",
+          "title": "Worktree on Start"
+        },
+        "onExit": {
+          "type": "string",
+          "enum": ["keep", "ask", "remove", "force"],
+          "default": "keep",
+          "description": "What to do on exit with worktrees created since omp started (on start or with `/wt`)",
+          "title": "Worktree on Exit"
+        },
+        "base": {
+          "type": "string",
+          "description": "Base directory for agent-managed worktrees — task-isolation copies, `github` PR checkouts, and `omp worktree` cleanup all live here. Unset uses ~/.omp/wt. Must be an absolute or ~-relative path; relative paths are ignored. The OMP_WORKTREE_DIR env var overrides this.",
+          "title": "Worktree Base Directory"
+        }
+      },
+      "type": "object"
+    },
+    "ovnfs": {
+      "additionalProperties": true,
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "ovnfs executable; unset looks for `ovnfs` on PATH. When it is found, ovnfs checkouts (copy-on-write views of a folder, ready in about a second at any size) serve every separate copy: the system prompt tells agents to open checkouts instead of git worktrees or copies, and with `isolation.backend` on auto, isolated subagents (when allowed) run in checkouts instead of native clones and `/wt` moves the session into a checkout instead of a linked worktree",
+          "title": "ovnfs Binary"
+        }
+      },
+      "type": "object"
+    },
+    "readLineNumbers": {
+      "type": "boolean",
+      "default": false,
+      "description": "Prepend line numbers to read tool output by default",
+      "title": "Line Numbers"
+    },
+    "read": {
+      "additionalProperties": true,
+      "properties": {
+        "defaultLimit": {
+          "type": "number",
+          "default": 300,
+          "description": "Default number of lines returned when agent calls read without a limit",
+          "title": "Default Read Limit"
+        },
+        "renderMarkdown": {
+          "type": "boolean",
+          "default": false,
+          "description": "Render Markdown read results as formatted terminal Markdown previews instead of raw source",
+          "title": "Markdown Previews"
+        },
+        "summarize": {
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Return structural code summaries when read is called without an explicit selector",
+              "title": "Read Summaries"
+            },
+            "prose": {
+              "type": "boolean",
+              "default": false,
+              "description": "Return structural summaries for Markdown and plain text reads",
+              "title": "Prose Summaries"
+            },
+            "minBodyLines": {
+              "type": "number",
+              "default": 4,
+              "description": "Minimum multiline body or literal length before read summaries collapse it",
+              "title": "Read Summary Body Lines"
+            },
+            "minCommentLines": {
+              "type": "number",
+              "default": 6,
+              "description": "Minimum multiline block comment length before read summaries collapse it",
+              "title": "Read Summary Comment Lines"
+            },
+            "minTotalLines": {
+              "type": "number",
+              "default": 100,
+              "description": "Files with fewer total lines are read verbatim instead of structurally summarized",
+              "title": "Read Summary Minimum File Length"
+            },
+            "unfoldUntil": {
+              "type": "number",
+              "default": 50,
+              "description": "BFS-unfold elidable spans until the summary is at least this many visible lines. 0 keeps only the outermost elisions.",
+              "title": "Read Summary Unfold Target"
+            },
+            "unfoldLimit": {
+              "type": "number",
+              "default": 100,
+              "description": "Hard ceiling on summary size while BFS-unfolding. An unfold whose revealed lines would exceed this is skipped (that span stays folded) and unfolding continues with the remaining spans.",
+              "title": "Read Summary Unfold Ceiling"
+            }
+          },
+          "type": "object"
+        },
+        "toolResultPreview": {
+          "type": "boolean",
+          "default": false,
+          "description": "Render read tool results inline in the transcript instead of summary rows",
+          "title": "Inline Read Previews"
+        }
+      },
+      "type": "object"
+    },
+    "todo": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the todo tool for task tracking",
+          "title": "Todos"
+        },
+        "reminders": {
+          "type": "boolean",
+          "default": true,
+          "description": "Remind the agent to complete todos before stopping",
+          "title": "Todo Reminders"
+        },
+        "remindersMax": {
+          "type": "number",
+          "default": 3,
+          "description": "Maximum number of todo reminders before giving up",
+          "title": "Todo Reminder Limit"
+        },
+        "midRunNudges": {
+          "type": "string",
+          "enum": ["off", "capped", "backoff"],
+          "default": "capped",
+          "description": "How often a long turn is reminded to update its todo list while it keeps changing things",
+          "title": "Mid-Run Todo Nudges"
+        },
+        "eager": {
+          "type": "string",
+          "enum": ["default", "preferred", "always"],
+          "default": "default",
+          "description": "How strongly to push automatic todo-list creation after the first message",
+          "title": "Create Todos Automatically"
+        }
+      },
+      "type": "object"
+    },
+    "tasks": {
+      "additionalProperties": true,
+      "properties": {
+        "todoClearDelay": {
+          "type": "number",
+          "default": 60,
+          "description": "Delay before completed or abandoned todos are removed from the todo widget",
+          "title": "Todo Auto-Clear Delay"
+        }
+      },
+      "type": "object"
+    },
+    "glob": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the glob tool for glob-based file lookup",
+          "title": "Glob"
+        }
+      },
+      "type": "object"
+    },
+    "grep": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the grep tool for regex content search",
+          "title": "Grep"
+        },
+        "contextBefore": {
+          "type": "number",
+          "default": 0,
+          "description": "Lines of context before each grep match",
+          "title": "Grep Context Before"
+        },
+        "contextAfter": {
+          "type": "number",
+          "default": 0,
+          "description": "Lines of context after each grep match",
+          "title": "Grep Context After"
+        }
+      },
+      "type": "object"
+    },
+    "astGrep": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable the ast_grep tool for structural AST search",
+          "title": "AST Grep"
+        }
+      },
+      "type": "object"
+    },
+    "astEdit": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the ast_edit tool for structural AST rewrites",
+          "title": "AST Edit"
+        }
+      },
+      "type": "object"
+    },
+    "find": {
+      "additionalProperties": true,
+      "properties": {
+        "verifyModel": {
+          "type": "string",
+          "description": "Model selector (e.g. openrouter/liquid/d1-ultra) tried first for find's passage verification, before the judge role; filename and sketch ranking stay on the judge role. Unset: the judge role verifies too",
+          "title": "Find Verification Model"
+        },
+        "enabled": {
+          "type": "string",
+          "enum": ["auto", "on", "off"],
+          "default": "auto",
+          "description": "Enable the find tool: natural-language search for files and line ranges, judged by the judge model role. Auto enables it only when the judge role resolves to a native TypeSafe jev model",
+          "title": "Find (semantic grep)"
+        },
+        "hitThreshold": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "debug": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the debug tool for DAP-based debugging",
+          "title": "Debug"
+        }
+      },
+      "type": "object"
+    },
+    "launch": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable named bash services and proc:// supervision for shared long-running project processes",
+          "title": "Services"
+        },
+        "persist": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "type": "object"
+    },
+    "speechgen": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable the tts tool for on-device (Phonon) or xAI Grok Voice speech-file synthesis",
+          "title": "Speech Generation"
+        }
+      },
+      "type": "object"
+    },
+    "generate_image": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable the generate_image tool (text-to-image generation and editing). Exposed as an xd:// device when tools.xdev is on.",
+          "title": "Generate Image"
+        }
+      },
+      "type": "object"
+    },
+    "computer": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable the scriptable host-desktop eval prelude (screenshots, input, accessibility)",
+          "title": "Computer"
+        },
+        "display": {
+          "type": "string",
+          "default": "active",
+          "description": "Active window's display (active), all displays (all), or a native display id",
+          "title": "Computer Display"
+        },
+        "maxWidth": {
+          "type": "number",
+          "default": 3840,
+          "description": "Maximum screenshot width in pixels",
+          "title": "Computer Screenshot Width"
+        },
+        "maxHeight": {
+          "type": "number",
+          "default": 2400,
+          "description": "Maximum screenshot height in pixels",
+          "title": "Computer Screenshot Height"
+        },
+        "backgroundFallback": {
+          "type": "string",
+          "enum": ["takeover", "refuse"],
+          "default": "takeover",
+          "description": "What window input does when its background route is unavailable: rerun it in takeover and return focus to your app (macOS; elsewhere plain takeover), or refuse, which also keeps the agent from taking the foreground or opening macOS menus itself",
+          "title": "Computer Background Fallback"
+        }
+      },
+      "type": "object"
+    },
+    "ratchet": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable the ratchet eval/hillclimb prelude; /ratchet turns it on for the current session",
+          "title": "Ratchet"
+        }
+      },
+      "type": "object"
+    },
+    "archive": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the read-only archive eval prelude: prompt history, recent projects, past sessions and recaps",
+          "title": "Archive"
+        }
+      },
+      "type": "object"
+    },
+    "commit": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the commit eval prelude and /commit: commit only the lines this agent and its subagents wrote",
+          "title": "Selective commit"
+        },
+        "mapReduceEnabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "mapReduceThreshold": {
+          "type": "number",
+          "default": 5000
+        },
+        "mapBatchTokenBudget": {
+          "type": "number",
+          "default": 16000
+        },
+        "cacheEnabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "cacheTtlDays": {
+          "type": "number",
+          "default": 14
+        },
+        "changelogMaxDiffChars": {
+          "type": "number",
+          "default": 120000
+        }
+      },
+      "type": "object"
+    },
+    "images": {
+      "additionalProperties": true,
+      "properties": {
+        "questionTimeoutMs": {
+          "type": "number",
+          "default": 300000,
+          "description": "Per-request timeout for the vision-model call behind read's ?q= image questions, in milliseconds. A stalled provider fails fast with a timeout error instead of blocking until manual abort. Set to 0 to disable the timeout.",
+          "title": "Image Question Timeout"
+        },
+        "autoResize": {
+          "type": "boolean",
+          "default": true,
+          "description": "Resize large images to 2000x2000 max for better model compatibility",
+          "title": "Auto-Resize Images"
+        },
+        "blockImages": {
+          "type": "boolean",
+          "default": false,
+          "description": "Prevent images from being sent to LLM providers",
+          "title": "Block Images"
+        },
+        "describeForTextModels": {
+          "type": "boolean",
+          "default": true,
+          "description": "When an image is attached to a model without vision support, save it under local:// and inject a description from a vision-capable model instead of dropping it",
+          "title": "Describe Images for Text Models"
+        },
+        "urls": {
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Publish outgoing images through the configured backend chain and send URL-fetching providers short URLs instead of inline base64. Falls back to inline automatically when every backend or a provider fetch fails",
+              "title": "Serve Images as URLs"
+            },
+            "backends": {
+              "type": "array",
+              "default": ["provider-files", "tailscale", "cloudflared", "litterbox"],
+              "description": "Ordered destinations tried when publishing images for provider access",
+              "title": "Image URL Backends"
+            },
+            "options": {
+              "type": "object",
+              "default": {}
+            },
+            "credentials": {
+              "type": "object",
+              "default": {}
+            },
+            "command": {
+              "type": "string",
+              "description": "Argv template for the command backend; {file} is the image path, {mime}/{ext} optional. The last URL printed on stdout is used (e.g. pasta -b -f {file})",
+              "title": "Image Upload Command"
+            },
+            "publicBaseUrl": {
+              "type": "string",
+              "description": "Externally reachable base URL fronting the blob server (required for ssh, optional for direct)",
+              "title": "Image URL Public Base"
+            },
+            "ttlHours": {
+              "type": "number",
+              "default": 72,
+              "description": "Serving window for locally hosted image URLs, measured from the last time a conversation sent them; resuming a conversation re-arms the window at the same link. 0 keeps links alive while the broker runs",
+              "title": "Image URL Lifetime (hours)"
+            },
+            "bindHost": {
+              "type": "string",
+              "default": "127.0.0.1",
+              "description": "Host the blob server binds to; loopback for tunnels, 0.0.0.0 for direct serving",
+              "title": "Image URL Bind Host"
+            },
+            "sshTarget": {
+              "type": "string",
+              "description": "user@host destination for the ssh reverse forward",
+              "title": "Image URL SSH Target"
+            },
+            "sshRemotePort": {
+              "type": "number",
+              "default": 8787,
+              "description": "Remote listen port of the ssh reverse forward that your web server proxies to",
+              "title": "Image URL SSH Remote Port"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "checkpoint": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable the checkpoint and rewind tools for context checkpointing",
+          "title": "Checkpoint/Rewind"
+        }
+      },
+      "type": "object"
+    },
+    "fetch": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow the read tool to fetch and process URLs",
+          "title": "Read URLs"
+        }
+      },
+      "type": "object"
+    },
+    "vault": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable the vault:// internal URL for reading and editing Obsidian vault content via the Obsidian CLI. When disabled, vault:// resolution is refused and the vault:// entry is omitted from the system prompt.",
+          "title": "Obsidian Vault"
+        }
+      },
+      "type": "object"
+    },
+    "github": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable the github tool (op-based dispatch for repository, issue, pull request, diff, search, checkout, push, and Actions watch workflows)",
+          "title": "GitHub CLI"
+        },
+        "cache": {
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Cache rendered issue/PR view output in ~/.omp/cache/github-cache.db so repeated reads are free",
+              "title": "GitHub View Cache"
+            },
+            "softTtlSec": {
+              "type": "number",
+              "default": 300,
+              "description": "Within this window, cached issue/PR view rows are returned directly (seconds; default 5 minutes)",
+              "title": "GitHub Cache Soft TTL"
+            },
+            "hardTtlSec": {
+              "type": "number",
+              "default": 604800,
+              "description": "Past the soft TTL the cached row is returned and refreshed in the background; past the hard TTL it is dropped (seconds; default 7 days)",
+              "title": "GitHub Cache Hard TTL"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "web_search": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the web_search tool for live web results",
+          "title": "Web Search"
+        }
+      },
+      "type": "object"
+    },
+    "security": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable OMP-native security scan planning, execution, and the read-only security:// resource namespace",
+          "title": "Security"
+        }
+      },
+      "type": "object"
+    },
+    "ask": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the ask tool for interactive user questions",
+          "title": "Ask"
+        },
+        "timeout": {
+          "type": "number",
+          "default": 0,
+          "description": "Submit an ask form's current values (your preselected answers) after this many seconds (0 disables). Also bounds cfg:// approval prompts; an unanswered approval denies the write instead of auto-submitting",
+          "title": "Ask Timeout"
+        },
+        "notify": {
+          "type": "string",
+          "enum": ["on", "off"],
+          "default": "on",
+          "description": "Notify when the ask tool is waiting for input",
+          "title": "Ask Notification"
+        }
+      },
+      "type": "object"
+    },
+    "out": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Let the agent reply mid-task by writing to out://, shown like a response without ending its turn. Unset: on in the interactive TUI, off in print, RPC, and ACP",
+          "title": "Out"
+        }
+      },
+      "type": "object"
+    },
+    "async": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable async bash commands and background task execution",
+          "title": "Async Execution"
+        },
+        "maxJobs": {
+          "type": "number",
+          "default": 100
+        },
+        "printWake": {
+          "type": "boolean",
+          "default": false,
+          "description": "In print mode (-p, --mode json), keep running after the last prompt while this run's background jobs are active, and start another turn in the same session with each job's result; exits once no job or result is pending. Off: print mode exits after its prompts and cancels running jobs",
+          "title": "Wake Print Mode on Job Results"
+        },
+        "widgets": {
+          "type": "boolean",
+          "default": true,
+          "description": "Draw a live widget for each running background job (charts, bars, status grids derived from its output) in the wait card, the jobs pill and the jobs sheet, and caption long shell commands with one line on what they do. The `widget` model role (default: `smol`) writes one spec and at most one caption per job; updates need no further model calls",
+          "title": "Live Job Widgets"
+        }
+      },
+      "type": "object"
+    },
+    "dev": {
+      "additionalProperties": true,
+      "properties": {
+        "autoqa": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automated tool issue reporting (xd://report_issue). On by default; the first report asks for consent, and denying it disables reporting until re-enabled explicitly",
+          "title": "Auto QA"
+        },
+        "autoqaPush": {
+          "additionalProperties": true,
+          "properties": {
+            "endpoint": {
+              "type": "string",
+              "default": "https://qa.omp.sh/v1/grievances",
+              "description": "Full URL receiving Auto QA JSON reports (default https://qa.omp.sh/v1/grievances)",
+              "title": "Auto QA Push Endpoint"
+            },
+            "token": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "autoqaConsent": {
+          "type": "string",
+          "enum": ["unset", "granted", "denied"],
+          "default": "unset"
+        }
+      },
+      "type": "object"
+    },
+    "setupVersion": {
+      "type": "number",
+      "default": 0
+    },
+    "autoResume": {
+      "type": "boolean",
+      "default": false,
+      "description": "Automatically resume the most recent session in the current directory. If its model cannot be restored and model fallback is disabled, interactive startup warns and starts a new session without the saved history",
+      "title": "Auto Resume"
+    },
+    "git": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show git branch, status, and PR information in the TUI and watch repository metadata.",
+          "title": "Enable Git Integration"
+        }
+      },
+      "type": "object"
+    },
+    "theme": {
+      "additionalProperties": true,
+      "properties": {
+        "dark": {
+          "type": "string",
+          "default": "titanium",
+          "description": "Theme used when the terminal has a dark background",
+          "title": "Dark Theme"
+        },
+        "light": {
+          "type": "string",
+          "default": "light",
+          "description": "Theme used when the terminal has a light background",
+          "title": "Light Theme"
+        }
+      },
+      "type": "object"
+    },
+    "symbolPreset": {
+      "type": "string",
+      "enum": ["unicode", "nerd", "ascii"],
+      "default": "unicode",
+      "description": "Glyph set for icons and symbols (Unicode, Nerd Font, or ASCII)",
+      "title": "Symbol Preset"
+    },
+    "colorBlindMode": {
+      "type": "boolean",
+      "default": false,
+      "description": "Use blue instead of green for diff additions",
+      "title": "Color-Blind Mode"
+    },
+    "composer": {
+      "additionalProperties": true,
+      "properties": {
+        "shape": {
+          "type": "string",
+          "default": "band",
+          "description": "Visual layout of the input editor and status line",
+          "title": "Composer Shape"
+        },
+        "tokenRate": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show a live generation tok/s readout: on the working row next to the session title, or in the native composer bar right after the thinking level, where the last reading stays between turns. Estimated from streamed deltas and corrected by the provider's billed output count as each message completes.",
+          "title": "Generation Rate"
+        },
+        "recallClearedDrafts": {
+          "type": "boolean",
+          "default": true,
+          "description": "Keep drafts cleared with Ctrl+C in local Up/Down history until exit; disabling affects future clears",
+          "title": "Recall Cleared Drafts"
+        },
+        "predictions": {
+          "type": "boolean",
+          "default": true,
+          "description": "After a completed turn, ask the active model to predict your next message and show it as ghost text in the empty composer; Tab or Right inserts it without sending. Extra usage: every completed turn sends one more billed request over the whole conversation (counted in /stats)",
+          "title": "Composer Predictions"
+        },
+        "predictionAlternatives": {
+          "type": "boolean",
+          "default": false,
+          "description": "Ask for up to four distinct predictions instead of one, most likely first. The ghost text shows the first one your draft matches; after inserting one, press Tab again to pick another. The same single request returns a few more output tokens",
+          "title": "Prediction Alternatives"
+        }
+      },
+      "type": "object"
+    },
+    "statusLine": {
+      "additionalProperties": true,
+      "properties": {
+        "preset": {
+          "type": "string",
+          "enum": ["default", "minimal", "compact", "full", "nerd", "ascii", "custom"],
+          "default": "default",
+          "description": "Pre-built status line configurations",
+          "title": "Status Line Preset"
+        },
+        "separator": {
+          "type": "string",
+          "enum": ["powerline", "powerline-thin", "slash", "pipe", "block", "none", "ascii"],
+          "default": "powerline-thin",
+          "description": "Style of separators between segments",
+          "title": "Status Line Separator"
+        },
+        "contextLine": {
+          "type": "string",
+          "enum": ["off", "percentage", "annotated", "embedded"],
+          "default": "embedded",
+          "description": "How the line between the left and right segments reflects context usage (box composer only)",
+          "title": "Context-Reactive Line"
+        },
+        "sessionAccent": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use the session name color for the editor border and status line gap",
+          "title": "Session Accent"
+        },
+        "transparent": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use the terminal's default background for the status line instead of the theme's `statusLineBg`. Powerline end caps are dropped because they need a contrasting fill to bridge into the surrounding terminal.",
+          "title": "Transparent Status Line"
+        },
+        "compactThinkingLevel": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the thinking level as a single icon on the model name instead of a separate ` · <level>` suffix; in Tern's composer, as the model chip's icon instead of a separate chip (click the icon to cycle it).",
+          "title": "Compact Thinking Level"
+        },
+        "showHookStatus": {
+          "type": "boolean",
+          "default": true,
+          "description": "Display hook status messages below the status line",
+          "title": "Show Hook Status"
+        },
+        "leftSegments": {
+          "type": "array",
+          "default": ["vim", "model", "mode", "path", "git", "pr"]
+        },
+        "rightSegments": {
+          "type": "array",
+          "default": ["session_name", "token_total", "cost", "context_pct"]
+        },
+        "segmentOptions": {
+          "type": "object",
+          "default": {}
+        }
+      },
+      "type": "object"
+    },
+    "terminal": {
+      "additionalProperties": true,
+      "properties": {
+        "showImages": {
+          "type": "boolean",
+          "default": true,
+          "description": "Render images inline in the terminal",
+          "title": "Show Inline Images"
+        },
+        "showProgress": {
+          "type": "boolean",
+          "default": false,
+          "description": "Emit OSC 9;4 indeterminate progress while the agent or context maintenance is running (always on in Tern)",
+          "title": "Native Terminal Progress"
+        },
+        "programStatus": {
+          "type": "boolean",
+          "default": true,
+          "description": "Report whether the agent is working, waiting on you, done, or failed over OSC 7501, for terminal tab indicators and agent inboxes",
+          "title": "Program Status (OSC 7501)"
+        }
+      },
+      "type": "object"
+    },
+    "tui": {
+      "additionalProperties": true,
+      "properties": {
+        "maxInlineImageColumns": {
+          "type": "number",
+          "default": 100
+        },
+        "maxInlineImageRows": {
+          "type": "number",
+          "default": 20
+        },
+        "maxInlineImages": {
+          "type": "number",
+          "default": 8
+        },
+        "resizeScrollback": {
+          "type": "string",
+          "enum": ["append", "rebuild", "preserve"],
+          "default": "rebuild",
+          "description": "How a settled terminal resize refreshes transcript rows retained in terminal scrollback",
+          "title": "Resize Scrollback"
+        },
+        "completeScrollback": {
+          "type": "boolean",
+          "default": false,
+          "description": "Send transcript rows pushed off screen by a growing HUD or dialog straight to scrollback; when it shrinks, blank rows sit between the transcript and the input until new output fills them",
+          "title": "Complete Scrollback"
+        },
+        "textSizing": {
+          "type": "boolean",
+          "default": false,
+          "description": "Render Markdown H1 headings at 2x scale using Kitty's OSC 66 text-sizing protocol. Only takes effect on Kitty terminals; ignored everywhere else. Off by default.",
+          "title": "Large Headings (Kitty)"
+        },
+        "colorfulMarkdown": {
+          "type": "boolean",
+          "default": true,
+          "description": "Color headings by level, bold and italic text, inline code, and table headers from the theme's ANSI palette. Off uses one heading color and plain bold/italic.",
+          "title": "Colorful Markdown"
+        },
+        "renderMermaid": {
+          "type": "boolean",
+          "default": true,
+          "description": "Render Mermaid fenced code blocks as ASCII diagrams",
+          "title": "Render Mermaid Diagrams"
+        },
+        "renderSvg": {
+          "type": "boolean",
+          "default": true,
+          "description": "Invite the agent to draw diagrams and charts as SVG, rendered inline as images on terminals that show graphics",
+          "title": "Render SVG Figures"
+        },
+        "renderEmbeds": {
+          "type": "boolean",
+          "default": true,
+          "description": "Invite the agent to show pictures with <img> and web pages with <iframe>, loading them (remote addresses included) to draw inline on terminals that show graphics",
+          "title": "Render Embedded Images and Pages"
+        },
+        "autoGraph": {
+          "type": "string",
+          "enum": ["auto", "smart", "always", "off"],
+          "default": "auto",
+          "description": "Draw a chart under numeric tables in the agent's answers, in your theme's colors, on terminals that show graphics",
+          "title": "Auto-Graph Tables"
+        },
+        "reactions": {
+          "type": "boolean",
+          "default": true,
+          "description": "Invite the agent to react to your message with an emoji badge on its bubble",
+          "title": "Agent Reactions"
+        },
+        "codexResetFireworks": {
+          "type": "boolean",
+          "default": false,
+          "description": "Celebrate unscheduled Codex weekly usage resets and newly banked saved resets with a top-third fireworks overlay that remains until Esc",
+          "title": "Codex Reset Fireworks"
+        },
+        "titleState": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the agent run state in the terminal title's separator — an animated spinner while working (a static ':' under WSL), '>' when it's your turn, '!' when the agent is waiting on you",
+          "title": "Terminal Title Run State"
+        },
+        "titleSpinner": {
+          "type": "string",
+          "enum": ["braille", "pulse", "dots", "line"],
+          "default": "braille",
+          "description": "Glyph set for the working-state spinner in the terminal title — braille sweep, filling moon, single-dot cycle, or ASCII-safe line",
+          "title": "Terminal Title Spinner"
+        },
+        "spinnerInterval": {
+          "type": "number",
+          "description": "Milliseconds between frames of every spinner, the terminal title included; 0 shows static glyphs. Unset follows Motion",
+          "title": "Spinner Interval (ms)"
+        },
+        "maxFps": {
+          "type": "number",
+          "default": 30,
+          "description": "Ceiling on how often the TUI repaints, streaming text included. Keystroke echo keeps 30 fps, so the pane you type in stays responsive",
+          "title": "Max Frames Per Second"
+        },
+        "hyperlinks": {
+          "type": "string",
+          "enum": ["off", "auto", "always"],
+          "default": "auto",
+          "description": "Wrap paths and URLs in OSC 8 hyperlinks for terminal-native click-to-open (auto: detect support; off: never; always: unconditional)",
+          "title": "Terminal Hyperlinks"
+        },
+        "mouse": {
+          "type": "boolean",
+          "default": false,
+          "description": "Capture mouse clicks in the main session so live subagent cards and HUD rows focus on click, with a hover highlight on the target, and clicks on extension-owned links reach their extension (the link-hint key picks them without the mouse). Native text selection becomes Shift+drag while on, and mouse capture stops wheel scrolling — the terminal reports wheel ticks to omp instead — so scroll with the terminal's keyboard scrollback keys, or turn this off",
+          "title": "Mouse Click-to-Focus"
+        },
+        "tight": {
+          "type": "boolean",
+          "default": false,
+          "description": "Remove the 1-character horizontal padding from the left and right of the terminal output",
+          "title": "Tight Layout"
+        },
+        "motion": {
+          "type": "string",
+          "enum": ["full", "reduced", "none"],
+          "default": "full",
+          "description": "One switch over spinners, shimmer, and decorative blink/fade. Streaming text is unaffected (see Max Frames Per Second). A spinner interval you set still wins",
+          "title": "Motion"
+        },
+        "imeSafeCursor": {
+          "type": "boolean",
+          "default": false,
+          "description": "Move the prompt's bottom border to a separate row so macOS IME preedit cannot displace it",
+          "title": "IME-Safe Prompt Layout"
+        },
+        "vimMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Modal prompt editing. Esc leaves Insert mode; Normal mode has hjkl, 0, $, ^, w, b, e, gg, G, counts, x/D/C, dd/yy, p and u; operators take motions or text objects (diw, ca(, dap); v/V start a Visual selection that y copies and d deletes",
+          "title": "Vim Editing Mode"
+        },
+        "vimModeDisplay": {
+          "type": "string",
+          "enum": ["text", "icon", "none"],
+          "default": "text",
+          "description": "How the current Vim mode appears in the status line",
+          "title": "Vim Mode Indicator"
+        }
+      },
+      "type": "object"
+    },
+    "display": {
+      "additionalProperties": true,
+      "properties": {
+        "shimmer": {
+          "type": "string",
+          "enum": ["classic", "kitt", "disabled"],
+          "default": "classic",
+          "description": "Animation style for working/loading messages; off under reduced or no Motion",
+          "title": "Shimmer"
+        },
+        "pinnedAgents": {
+          "type": "string",
+          "enum": ["off", "collapsed", "full"],
+          "default": "collapsed",
+          "description": "Pinned live-agent jump list above the editor (off hides it; collapsed shows a few rows with an expander; full lists all)",
+          "title": "Pinned Agents"
+        },
+        "subagentLivePreview": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show each pinned subagent's current (or most recent) tool call beneath its row",
+          "title": "Subagent Live Preview"
+        },
+        "smoothStreaming": {
+          "type": "boolean",
+          "default": true,
+          "description": "Reveal assistant text and streamed tool input smoothly while chunks arrive (Tern types assistant text out itself)",
+          "title": "Smooth Streaming"
+        },
+        "hideToolActivity": {
+          "type": "boolean",
+          "default": false,
+          "description": "Hide model-initiated tool calls and results from the transcript",
+          "title": "Hide Tool Activity"
+        },
+        "showTokenUsage": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show per-turn token usage on assistant messages",
+          "title": "Show Token Usage"
+        },
+        "showTurnTime": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show the total prompt-to-yield time (including tool calls) on assistant message usage rows",
+          "title": "Show Turn Time"
+        },
+        "cacheMissMarker": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show a divider after an assistant turn whose request lost (missed) the prompt cache",
+          "title": "Cache Miss Marker"
+        },
+        "shellVisualization": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show bash commands as an interactive execution visualization instead of plain shell commands",
+          "title": "Shell Visualization"
+        },
+        "advisorCollapsedLines": {
+          "type": "number",
+          "default": 0,
+          "description": "Maximum note lines a collapsed advisor card shows below its header (0 keeps the full preview; expand with the tool-output toggle)",
+          "title": "Advisor Collapsed Lines"
+        },
+        "collapseCompacted": {
+          "type": "boolean",
+          "default": true,
+          "description": "Collapse pre-compaction history behind the summary divider on the live transcript; disable to keep the full transcript inline with dividers at each compaction point",
+          "title": "Collapse Compacted History"
+        }
+      },
+      "type": "object"
+    },
+    "showHardwareCursor": {
+      "type": "boolean",
+      "default": true,
+      "description": "Show terminal cursor for IME support",
+      "title": "Show Hardware Cursor"
+    },
+    "steeringMode": {
+      "type": "string",
+      "enum": ["all", "one-at-a-time"],
+      "default": "one-at-a-time",
+      "description": "How to process queued messages while agent is working",
+      "title": "Steering Mode"
+    },
+    "followUpMode": {
+      "type": "string",
+      "enum": ["all", "one-at-a-time"],
+      "default": "one-at-a-time",
+      "description": "How to drain follow-up messages after a turn completes",
+      "title": "Follow-Up Mode"
+    },
+    "interruptMode": {
+      "type": "string",
+      "enum": ["immediate", "wait"],
+      "default": "immediate",
+      "description": "When steering messages interrupt tool execution",
+      "title": "Interrupt Mode"
+    },
+    "btw": {
+      "additionalProperties": true,
+      "properties": {
+        "inject": {
+          "type": "boolean",
+          "default": false,
+          "description": "When you ask /btw for a steering prompt, it drafts one in <inject> tags, highlighted in the answer; Alt+I (app.btw.inject) sends it to the main session",
+          "title": "/btw Steering Inject"
+        }
+      },
+      "type": "object"
+    },
+    "loop": {
+      "additionalProperties": true,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["prompt", "compact", "reset"],
+          "default": "prompt",
+          "description": "What happens between /loop iterations before re-submitting the prompt",
+          "title": "Loop Mode"
+        },
+        "conditionTimeoutMs": {
+          "type": "number",
+          "default": 30000,
+          "description": "Max wait for a `/loop --while` / `--until` condition command before treating it as broken and stopping the loop. Set to 0 to wait indefinitely",
+          "title": "Loop Condition Timeout (ms)"
+        }
+      },
+      "type": "object"
+    },
+    "doubleEscapeAction": {
+      "type": "string",
+      "enum": ["rewind", "tree", "none"],
+      "default": "rewind",
+      "description": "What pressing Esc twice with an empty editor does: open the transcript rewind selector, open the session tree, or nothing",
+      "title": "Double-Escape Action"
+    },
+    "input": {
+      "additionalProperties": true,
+      "properties": {
+        "bareExitOnEmptySession": {
+          "type": "boolean",
+          "default": true,
+          "description": "Submitting exactly `exit`, `quit`, or `q` (any case) before the first message quits instead of prompting the model",
+          "title": "Bare Exit on Empty Session"
+        },
+        "bareSlashCommands": {
+          "type": "boolean",
+          "default": false,
+          "description": "Submitting exactly a command name without the leading `/` (e.g. `model`, `compact`) runs that slash command; once the session has messages, press Enter twice to confirm",
+          "title": "Bare Slash Commands"
+        }
+      },
+      "type": "object"
+    },
+    "treeFilterMode": {
+      "type": "string",
+      "enum": ["default", "no-tools", "user-only", "labeled-only", "all"],
+      "default": "default",
+      "description": "Default filter mode when opening the session tree",
+      "title": "Session Tree Filter"
+    },
+    "autocompleteMaxVisible": {
+      "type": "number",
+      "default": 10,
+      "description": "Max visible items in autocomplete dropdown (3-20)",
+      "title": "Autocomplete Items"
+    },
+    "spelling": {
+      "additionalProperties": true,
+      "properties": {
+        "typoDetection": {
+          "type": "boolean",
+          "default": true,
+          "description": "Mark misspelled prompt words with the active macOS dictionaries",
+          "title": "Typo Detection (macOS)"
+        },
+        "autocomplete": {
+          "type": "string",
+          "enum": ["off", "auto", "ngram", "smollm", "apple"],
+          "default": "auto",
+          "description": "Show predicted word completions as inline hints: Tab accepts with a space, Right without",
+          "title": "Word Autocomplete"
+        },
+        "autocorrect": {
+          "type": "boolean",
+          "default": false,
+          "description": "Apply confident macOS spelling corrections after completed words",
+          "title": "Autocorrect (macOS)"
+        }
+      },
+      "type": "object"
+    },
+    "emojiAutocomplete": {
+      "type": "boolean",
+      "default": true,
+      "description": "Suggest emojis from `:name:` shortcodes and expand text emoticons like `:D` or `:-)`",
+      "title": "Emoji Autocomplete"
+    },
+    "paste": {
+      "additionalProperties": true,
+      "properties": {
+        "largeMenuThreshold": {
+          "type": "number",
+          "default": 100,
+          "description": "When a paste reaches this many lines, offer a menu to wrap it in a code block, wrap it in XML tags, or save it to a file. 0 disables the menu (large pastes still collapse to a [Paste] marker).",
+          "title": "Large Paste Menu"
+        }
+      },
+      "type": "object"
+    },
+    "startup": {
+      "additionalProperties": true,
+      "properties": {
+        "quiet": {
+          "type": "boolean",
+          "default": false,
+          "description": "Skip welcome screen and startup status messages",
+          "title": "Quiet Startup"
+        },
+        "showSplash": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show the full animated setup splash on normal interactive startup without rerunning setup. Quiet Startup still suppresses it.",
+          "title": "Show Startup Splash"
+        },
+        "setupWizard": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show newly added onboarding steps once per setup version",
+          "title": "Setup Wizard"
+        },
+        "checkUpdate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check for omp updates on startup",
+          "title": "Check for Updates"
+        },
+        "changelogMode": {
+          "type": "string",
+          "enum": ["summary", "expanded", "hidden"],
+          "default": "summary",
+          "description": "Choose whether update notes start as a summary, full details, or stay hidden",
+          "title": "Startup Changelog"
+        }
+      },
+      "type": "object"
+    },
+    "update": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "type": "string",
+          "enum": ["stable", "canary"],
+          "default": "stable",
+          "description": "Update channel used by omp update and the startup update check",
+          "title": "Update Channel"
+        },
+        "auto": {
+          "type": "boolean",
+          "default": false,
+          "description": "Install omp updates in the background on startup; the next launch runs the new version",
+          "title": "Auto Update"
+        }
+      },
+      "type": "object"
+    },
+    "marketplace": {
+      "additionalProperties": true,
+      "properties": {
+        "autoUpdate": {
+          "type": "string",
+          "enum": ["off", "notify", "auto"],
+          "default": "notify",
+          "description": "Check for plugin updates on startup",
+          "title": "Marketplace Auto-Update"
+        }
+      },
+      "type": "object"
+    },
+    "magicKeywords": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable hidden notices for standalone ultrathink, chillax, orchestrate, workflowz, jevify keywords",
+          "title": "Magic Keywords"
+        },
+        "ultrathink": {
+          "type": "boolean",
+          "default": true,
+          "description": "Let standalone ultrathink request maximum automatic thinking and append its hidden notice",
+          "title": "Ultrathink Keyword"
+        },
+        "chillax": {
+          "type": "boolean",
+          "default": true,
+          "description": "Let standalone chillax drop thinking to the model's lowest effort (models with per-message effort, even mid-turn) and append its hidden notice",
+          "title": "Chillax Keyword"
+        },
+        "orchestrate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Let standalone orchestrate append its hidden multi-agent orchestration notice",
+          "title": "Orchestrate Keyword"
+        },
+        "workflow": {
+          "type": "boolean",
+          "default": true,
+          "description": "Let standalone workflowz append its hidden eval workflow notice",
+          "title": "Workflow Keyword"
+        },
+        "jevify": {
+          "type": "boolean",
+          "default": true,
+          "description": "Let standalone jevify append its hidden bulk-judge classification notice",
+          "title": "Jevify Keyword"
+        }
+      },
+      "type": "object"
+    },
+    "completion": {
+      "additionalProperties": true,
+      "properties": {
+        "notify": {
+          "type": "string",
+          "enum": ["on", "off"],
+          "default": "on",
+          "description": "Notify when the agent finishes a turn",
+          "title": "Completion Notification"
+        }
+      },
+      "type": "object"
+    },
+    "error": {
+      "additionalProperties": true,
+      "properties": {
+        "notify": {
+          "type": "string",
+          "enum": ["on", "off"],
+          "default": "off",
+          "description": "Notify when the agent stops with an error",
+          "title": "Error Notification"
+        }
+      },
+      "type": "object"
+    },
+    "recap": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Generate a brief LLM recap of where things stand after the terminal has been idle",
+          "title": "Idle Recap"
+        },
+        "idleSeconds": {
+          "type": "number",
+          "default": 240,
+          "description": "Seconds to wait while idle before showing the recap",
+          "title": "Idle Recap Delay"
+        }
+      },
+      "type": "object"
+    },
+    "session": {
+      "additionalProperties": true,
+      "properties": {
+        "worktreeScope": {
+          "type": "string",
+          "enum": ["directory", "repo"],
+          "default": "repo",
+          "description": "Choose whether the resume picker's current folder includes sessions from other repository worktrees",
+          "title": "Resume Worktree Scope"
+        },
+        "warnCost": {
+          "type": "number"
+        },
+        "maxCost": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "power": {
+      "additionalProperties": true,
+      "properties": {
+        "sleepPrevention": {
+          "type": "string",
+          "enum": ["off", "idle", "display", "system"],
+          "default": "idle",
+          "description": "Prevent the system sleeping while the agent is running a turn; an idle session, including one waiting on background jobs, does not hold it. Each level is cumulative — it adds the flags of all lower levels.",
+          "title": "Sleep Prevention"
+        }
+      },
+      "type": "object"
+    },
+    "prewalk": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Start on the active model, then switch to a fast/cheap model (default the 'smol' role) at the first edit/write after the plan nudge's todo list exists — the strong model plans, commits the todos, and starts the implementation before handing off. Overridable per session with --prewalk / --no-prewalk.",
+          "title": "Enable Prewalk"
+        },
+        "from": {
+          "type": "string",
+          "default": "@default",
+          "description": "Model or role (default '@default') that /prewalk restart returns to for planning.",
+          "title": "Prewalk planning model"
+        },
+        "into": {
+          "type": "string",
+          "default": "@smol",
+          "description": "Model or role (default '@smol') that prewalk hands off to at the first edit/write: /prewalk, /prewalk restart, Enable Prewalk, and --prewalk. Auto-prewalk uses its own target.",
+          "title": "Prewalk target"
+        },
+        "auto": {
+          "type": "string",
+          "enum": ["off", "suggest", "on"],
+          "default": "off",
+          "description": "Ask the native judge resolved through the 'judge' role whether each new top-level user task front-loads its hard reasoning. Needs a native judge; without one nothing is classified. Independent of Enable Prewalk.",
+          "title": "Auto Prewalk"
+        },
+        "autoTarget": {
+          "type": "string",
+          "default": "@smol",
+          "description": "Model or role (default '@smol') auto-prewalk hands off to at the first edit/write.",
+          "title": "Auto-prewalk target"
+        }
+      },
+      "type": "object"
+    },
+    "providers": {
+      "additionalProperties": true,
+      "properties": {
+        "maxInFlightRequests": {
+          "type": "object",
+          "default": {},
+          "description": "Maximum concurrent LLM requests per provider id (for example \"openai\" or \"anthropic\"), shared across local OMP processes with this config root. Omitted providers are unlimited.",
+          "title": "Max In-Flight Requests"
+        },
+        "anthropic": {
+          "additionalProperties": true,
+          "properties": {
+            "serverSideFallback": {
+              "type": "boolean",
+              "default": false,
+              "description": "When a Claude Fable 5 / Mythos 5 request is blocked by Anthropic's safety classifier, retry it on Claude Opus 5 server-side (Anthropic `server-side-fallback-2026-06-01` beta). Opt-in — leaving this off preserves the pre-fallback behavior for every request.",
+              "title": "Anthropic Server-Side Fallback (Fable 5)"
+            },
+            "slowMode": {
+              "type": "string",
+              "enum": ["off", "auto"],
+              "default": "off"
+            }
+          },
+          "type": "object"
+        },
+        "ollama-cloud": {
+          "additionalProperties": true,
+          "properties": {
+            "maxConcurrency": {
+              "type": "number",
+              "default": 3,
+              "description": "Maximum concurrent Ollama Cloud subagent runs per process; 0 disables the provider-specific limit",
+              "title": "Ollama Cloud Max Concurrency"
+            }
+          },
+          "type": "object"
+        },
+        "webSearchTimeoutSeconds": {
+          "type": "number",
+          "default": 60,
+          "description": "Hard timeout for each provider's search transport before web_search advances to the next fallback, in seconds (maximum 300)",
+          "title": "Web Search Timeout"
+        },
+        "antigravityEndpoint": {
+          "type": "string",
+          "enum": ["auto", "production", "sandbox"],
+          "default": "auto",
+          "description": "Endpoint routing strategy for google-antigravity providers (chat, search, image, discovery)",
+          "title": "Antigravity Endpoint Mode"
+        },
+        "fireworksTier": {
+          "type": "string",
+          "enum": ["standard", "priority"],
+          "default": "standard",
+          "description": "Serving path for Fireworks requests. Priority sends `service_tier: \"priority\"` for higher reliability during peak traffic at a higher price; Standard omits it. Fast (`-fast`) models ignore this — Fast is its own serving path.",
+          "title": "Fireworks Tier"
+        },
+        "tinyModelDevice": {
+          "type": "string",
+          "enum": ["default", "gpu", "cpu", "mlx", "metal", "webgpu", "cuda", "dml", "coreml", "auto", "wasm", "webnn", "webnn-gpu", "webnn-cpu", "webnn-npu"],
+          "default": "default",
+          "description": "Inference backend for local tiny models (titles + memory): an ONNX execution provider, or `mlx` to download MLX weights and run them through mlx-lm on Apple silicon. Default uses CPU-only ONNX. The PI_TINY_DEVICE env var overrides this.",
+          "title": "Tiny Model Device"
+        },
+        "tinyModelDtype": {
+          "type": "string",
+          "enum": ["default", "q4", "q4f16", "q8", "fp16", "fp32", "int8", "uint8", "bnb4", "q2", "q2f16", "q1", "q1f16", "auto"],
+          "default": "default",
+          "description": "ONNX quantization/precision for local tiny models. Default uses each model's shipped dtype (q4); lower precision is faster, higher is more faithful. Ignored by the MLX backend (its repos are pre-quantized 4-bit). The PI_TINY_DTYPE env var overrides this.",
+          "title": "Tiny Model Precision"
+        },
+        "autoThinkingMaxEffort": {
+          "type": "string",
+          "enum": ["xhigh", "max"],
+          "default": "xhigh",
+          "description": "Highest effort the `auto` classifier may resolve. `xhigh` keeps the classifier one tier below the top, so only an explicit `ultrathink` reaches `max`; `max` lets a turn the classifier judges exceptional bill the top tier on models that expose it.",
+          "title": "Auto Thinking Ceiling"
+        },
+        "kimiApiFormat": {
+          "type": "string",
+          "enum": ["auto", "openai", "anthropic"],
+          "default": "auto",
+          "description": "API format for Kimi Code provider (auto follows live model metadata)",
+          "title": "Kimi API Format"
+        },
+        "openaiWebsockets": {
+          "type": "string",
+          "enum": ["auto", "off", "on"],
+          "default": "auto",
+          "description": "WebSocket policy for OpenAI Codex models only",
+          "title": "OpenAI Codex WebSockets"
+        },
+        "openaiResponsesWebsockets": {
+          "type": "boolean",
+          "default": false,
+          "description": "Opt in for catalog-supported standard Responses models; model or request false disables it",
+          "title": "OpenAI Responses WebSockets"
+        },
+        "openaiLiveSteering": {
+          "type": "boolean",
+          "default": false,
+          "description": "Deliver messages typed while a GPT-6 response streams into that response over the Codex WebSocket, instead of waiting for the next tool boundary",
+          "title": "OpenAI Live Steering"
+        },
+        "muse-code": {
+          "additionalProperties": true,
+          "properties": {
+            "storeResponses": {
+              "type": "boolean",
+              "default": false,
+              "description": "Store Muse Code results on Meta's servers so a turn whose connection drops is recovered instead of re-run. Stored runs keep prompts and outputs on Meta's side.",
+              "title": "Muse Code Stored Responses"
+            }
+          },
+          "type": "object"
+        },
+        "openai-codex": {
+          "additionalProperties": true,
+          "properties": {
+            "daybreak": {
+              "type": "boolean",
+              "default": true,
+              "description": "Automatically request the Daybreak Blue cyber access program on ChatGPT accounts eligible for it. OpenAI may use content from Daybreak Blue sessions to improve its models. Does not cover dedicated Daybreak Blue models (gpt-daybreak-blue-*), which may still run as Daybreak sessions.",
+              "title": "Codex Daybreak Blue"
+            }
+          },
+          "type": "object"
+        },
+        "cacheRetention": {
+          "type": "string",
+          "enum": ["auto", "short", "long", "none"],
+          "default": "auto",
+          "description": "Prompt-cache retention forwarded to providers that support it (Anthropic, Bedrock, OpenRouter, OpenAI)",
+          "title": "Prompt Cache Retention"
+        },
+        "cacheWarming": {
+          "type": "string",
+          "enum": ["off", "streaming", "idle"],
+          "default": "idle",
+          "description": "Refresh the last request's prompt-cache entry shortly before it expires (Anthropic max_tokens 0 pre-warm, else a one-token replay)",
+          "title": "Cache Warming"
+        },
+        "cacheWarmingStrategy": {
+          "type": "string",
+          "enum": ["auto", "keepalive", "compact"],
+          "default": "auto",
+          "description": "How a long tool call is bridged once refreshing stops paying: compact the history before the cache expires, or let it expire",
+          "title": "Cache Warming Strategy"
+        },
+        "cacheWarmingCompactPercent": {
+          "type": "number",
+          "default": 60,
+          "description": "Share of the context window a prompt must reach before a long tool call may be bridged with compaction; the lower of this and the token limit applies",
+          "title": "Cache Bridge Compaction Percent"
+        },
+        "cacheWarmingCompactTokens": {
+          "type": "number",
+          "default": 150000,
+          "description": "Prompt tokens from which a long tool call may be bridged with compaction; the lower of this and the window percent applies",
+          "title": "Cache Bridge Compaction Tokens"
+        },
+        "streamFirstEventTimeoutSeconds": {
+          "type": "number",
+          "default": -1,
+          "description": "Seconds to wait for the first model stream event; -1 uses provider/env defaults, 0 disables the watchdog",
+          "title": "Stream First Event Timeout"
+        },
+        "streamIdleTimeoutSeconds": {
+          "type": "number",
+          "default": -1,
+          "description": "Seconds a model stream may stay silent between events; -1 uses provider/env defaults, 0 disables the watchdog",
+          "title": "Stream Idle Timeout"
+        },
+        "openrouterVariant": {
+          "type": "string",
+          "enum": ["default", "nitro", "floor", "online", "exacto"],
+          "default": "default",
+          "description": "Default routing-variant suffix appended to OpenRouter model IDs (overridden when the selector already names a variant)",
+          "title": "OpenRouter Routing"
+        },
+        "fetch": {
+          "type": "string",
+          "enum": ["auto", "native", "trafilatura", "lynx", "parallel", "firecrawl", "jina"],
+          "default": "auto",
+          "description": "Reader backend priority for the fetch/read URL tool",
+          "title": "Fetch Provider"
+        },
+        "webKeyless": {
+          "type": "boolean",
+          "default": true,
+          "description": "Let web search and URL reading use third-party services without your credential: keyless Parallel, Exa, Firecrawl, Keenable, and Perplexity, the Jina reader, and scraped engines (Startpage, DuckDuckGo, Ecosia, Google, Mojeek, Hacker News). Off, only services you configured run.",
+          "title": "Keyless Web Services"
+        }
+      },
+      "type": "object"
+    },
+    "defaultThinkingLevel": {
+      "type": "string",
+      "enum": ["minimal", "low", "medium", "high", "xhigh", "max", "auto"],
+      "default": "high",
+      "description": "Reasoning depth for thinking-capable models",
+      "title": "Thinking Level"
+    },
+    "hideThinkingBlock": {
+      "type": "boolean",
+      "default": false,
+      "description": "Hide thinking blocks in assistant responses",
+      "title": "Hide Thinking Blocks"
+    },
+    "expandThinkingBlocks": {
+      "type": "boolean",
+      "default": false,
+      "description": "Keep finished thinking blocks expanded instead of collapsing them when the turn ends",
+      "title": "Expand Thinking Blocks"
+    },
+    "proseOnlyThinking": {
+      "type": "boolean",
+      "default": true,
+      "description": "Omit code blocks from thinking summaries and replace them with an ellipsis",
+      "title": "Prose Only Thinking"
+    },
+    "omitThinking": {
+      "type": "boolean",
+      "default": false,
+      "description": "Instruct upstream providers to completely omit thinking summaries from responses (where supported)",
+      "title": "Omit Thinking summaries"
+    },
+    "externalThinking": {
+      "type": "boolean",
+      "default": false,
+      "description": "Private scratchpad; not shown to user. Disables supported GPT, Claude, and Gemini reasoning",
+      "title": "External Thinking"
+    },
+    "model": {
+      "additionalProperties": true,
+      "properties": {
+        "loopGuard": {
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable automatic stream loop detection for model reasoning and prose",
+              "title": "Loop Guard"
+            },
+            "checkAssistantContent": {
+              "type": "boolean",
+              "default": true,
+              "description": "Apply loop guard to assistant prose messages in addition to thinking logs",
+              "title": "Loop Guard Scan Prose"
+            },
+            "toolCallReminder": {
+              "type": "boolean",
+              "default": true,
+              "description": "When a Gemini reasoning stream emits many consecutive planning headers without calling a tool, interrupt it and inject a reminder to issue a tool call (requires Loop Guard)",
+              "title": "Loop Guard Tool-Call Reminder"
+            }
+          },
+          "type": "object"
+        },
+        "toolCallLoopGuard": {
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Detect consecutive identical tool calls across turns and inject a corrective steer",
+              "title": "Tool-Call Loop Guard"
+            },
+            "threshold": {
+              "type": "number",
+              "default": 5,
+              "description": "Consecutive identical tool calls required before the corrective steer is injected",
+              "title": "Tool-Call Loop Threshold"
+            },
+            "exemptTools": {
+              "type": "array",
+              "default": ["wait"],
+              "description": "Tool names, or xd:// device names of write dispatches (for example mcp__peers_wait), that may repeat consecutively without triggering the cross-turn loop guard",
+              "title": "Tool-Call Loop Exempt Tools"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "inlineToolDescriptors": {
+      "type": "string",
+      "enum": ["auto", "on", "off"],
+      "default": "auto",
+      "description": "Render full tool descriptors in the system prompt and strip top-level/nested descriptions from provider tool schemas so descriptor text is sent once. Auto enables this for Gemini models and disables it otherwise",
+      "title": "Inline Tool Descriptors"
+    },
+    "includeModelInPrompt": {
+      "type": "boolean",
+      "default": true,
+      "description": "Surface the active model identifier in the system prompt so the agent knows which model it is",
+      "title": "Include Model in Prompt"
+    },
+    "systemPromptTemplates": {
+      "type": "object",
+      "default": {}
+    },
+    "includeWorkspaceTree": {
+      "type": "boolean",
+      "default": false,
+      "description": "Render the workspace directory tree in the system prompt. WARNING: This can bust prompt caching across sessions when files are modified.",
+      "title": "Include Workspace Tree"
+    },
+    "encourageEdits": {
+      "type": "boolean",
+      "default": true,
+      "description": "Require the edit tool for file edits and forbid sed/perl/python edits",
+      "title": "Encourage Edits"
+    },
+    "skillful": {
+      "type": "boolean",
+      "default": true,
+      "description": "List available skills in the system prompt; disable to save context and toggle per-session with /skillful",
+      "title": "List Skills in Prompt"
+    },
+    "personality": {
+      "type": "string",
+      "enum": ["default", "friendly", "pragmatic", "none"],
+      "default": "default",
+      "description": "Communication style rendered into the system prompt's personality block",
+      "title": "Personality"
+    },
+    "temperature": {
+      "type": "number",
+      "default": -1,
+      "description": "Sampling temperature (0 = deterministic, 1 = creative, -1 = provider default)",
+      "title": "Temperature"
+    },
+    "topP": {
+      "type": "number",
+      "default": -1,
+      "description": "Nucleus sampling cutoff (0-1, -1 = provider default)",
+      "title": "Top P"
+    },
+    "topK": {
+      "type": "number",
+      "default": -1,
+      "description": "Sample from top-K tokens (-1 = provider default)",
+      "title": "Top K"
+    },
+    "minP": {
+      "type": "number",
+      "default": -1,
+      "description": "Minimum probability threshold (0-1, -1 = provider default)",
+      "title": "Min P"
+    },
+    "presencePenalty": {
+      "type": "number",
+      "default": -1,
+      "description": "Penalty for introducing already-present tokens (-1 = provider default)",
+      "title": "Presence Penalty"
+    },
+    "repetitionPenalty": {
+      "type": "number",
+      "default": -1,
+      "description": "Penalty for repeated tokens (-1 = provider default)",
+      "title": "Repetition Penalty"
+    },
+    "textVerbosity": {
+      "type": "string",
+      "enum": ["low", "medium", "high"],
+      "default": "low",
+      "description": "OpenAI Responses and Codex response verbosity (low, medium, or high)",
+      "title": "Text Verbosity"
+    },
+    "tier": {
+      "additionalProperties": true,
+      "properties": {
+        "openai": {
+          "type": "string",
+          "enum": ["none", "auto", "default", "flex", "scale", "priority", "ultrafast"],
+          "default": "none",
+          "description": "Processing tier for OpenAI / OpenAI-Codex requests, and OpenAI-family models routed via OpenRouter (none = omit). Sent as `service_tier`.",
+          "title": "Service Tier — OpenAI"
+        },
+        "anthropic": {
+          "type": "string",
+          "enum": ["none", "priority"],
+          "default": "none",
+          "description": "Processing tier for Claude requests. `priority` realizes fast mode (`speed: \"fast\"`) on supported direct Anthropic models; ignored on Bedrock/Vertex Claude and via OpenRouter.",
+          "title": "Service Tier — Anthropic"
+        },
+        "google": {
+          "type": "string",
+          "enum": ["none", "flex", "priority"],
+          "default": "none",
+          "description": "Processing tier for Gemini (Google AI Studio + Vertex) requests, and Google-family models routed via OpenRouter (none = omit). Sent as the top-level `serviceTier` field.",
+          "title": "Service Tier — Google"
+        },
+        "subagent": {
+          "type": "string",
+          "enum": ["inherit", "none", "auto", "default", "flex", "scale", "priority", "ultrafast"],
+          "default": "inherit",
+          "description": "Service Tier for spawned task/eval subagents. Inherit = match the main agent's live per-family tiers (tracks /fast); pick a value to apply it to whichever family the subagent's model belongs to.",
+          "title": "Service Tier — Subagent"
+        },
+        "advisor": {
+          "type": "string",
+          "enum": ["inherit", "none", "auto", "default", "flex", "scale", "priority", "ultrafast"],
+          "default": "none",
+          "description": "Service Tier for the advisor model. None = standard processing; Inherit = match the main agent's live per-family tiers; pick a value to apply it to the advisor model's family.",
+          "title": "Service Tier — Advisor"
+        }
+      },
+      "type": "object"
+    },
+    "retry": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "maxRetries": {
+          "type": "number",
+          "default": 10,
+          "description": "Maximum retry attempts on API errors",
+          "title": "Retry Attempts"
+        },
+        "baseDelayMs": {
+          "type": "number",
+          "default": 500
+        },
+        "maxDelayMs": {
+          "type": "number",
+          "default": 300000,
+          "description": "Maximum wait between retries, in ms. When the provider asks us to wait longer than this and no credential or model fallback succeeds, the request fails fast instead of sleeping (e.g. 3-hour Anthropic rate-limit windows). 0 disables the ceiling — to let the session auto-resume through provider-stated quota resets.",
+          "title": "Max Retry Delay"
+        },
+        "waitForUsageReset": {
+          "type": "boolean",
+          "default": false,
+          "description": "When a provider reports usage-limit exhaustion with a reset time (5-hour or weekly quota windows on any provider), sleep until the reset instead of failing fast past retry.maxDelayMs. Waits are abortable (Esc) but also hold subagents, so leave off for unattended runs.",
+          "title": "Wait For Usage Reset"
+        },
+        "modelFallback": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow retry recovery to switch to models in retry.fallbackChains after provider errors. Independent of Auto-Promote Context",
+          "title": "Retry Model Fallback"
+        },
+        "fallbackOn": {
+          "type": "string",
+          "enum": ["any", "usage-limit", "except-usage-limit"],
+          "default": "any",
+          "description": "Which failed requests may switch to a configured fallback model",
+          "title": "Fallback Trigger"
+        },
+        "rateLimitWalksChain": {
+          "type": "boolean",
+          "default": false,
+          "description": "On a rate limit, do not hold the retry.fallbackChains walk for a turn whose thinking is signed by the failing model. Off (the default), such a turn keeps retrying the rate-limited model until retry.maxRetries is spent before the chain is reached.",
+          "title": "Rate Limit Walks Chain"
+        },
+        "usageAwareFallback": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use reliable coding-plan quota reports to prefer same-provider accounts, then configured fallback models, before a hard usage limit. Ordinary configured API keys are excluded.",
+          "title": "Usage-Aware Fallback"
+        },
+        "usageReservePct": {
+          "type": "number",
+          "default": 10,
+          "description": "Treat a coding-plan model as near its limit below this remaining percentage. Unknown or unmapped usage keeps the primary model.",
+          "title": "Reserve Margin"
+        },
+        "usageReservePolicy": {
+          "type": "string",
+          "enum": ["confirm", "auto", "fail-closed"],
+          "default": "confirm",
+          "description": "What to do when every same-provider coding-plan account is inside the reserve margin.",
+          "title": "Reserve Policy"
+        },
+        "fallbackChains": {
+          "type": "object",
+          "default": {},
+          "description": "JSON object mapping model roles, model selectors (\"provider/model-id\"), or provider wildcards (\"provider/*\") to ordered fallback selectors, e.g. {\"default\":[\"openai/gpt-4o-mini\"],\"google-antigravity/*\":[\"google/*\",\"google-vertex/*\"]}. Model-oriented keys apply whenever that model/provider is active, regardless of role; a \"provider/*\" entry keeps the failing model's id and swaps the provider. An id-prefixed wildcard (\"openrouter/google/*\") re-prefixes the failing model's bare id (google-antigravity/gemini-x -> openrouter/google/gemini-x) and, used as a key, matches only that provider's ids under the prefix. A fallback entry may carry an explicit thinking suffix (\"provider/model:low\", \":high\", \":max\", \":off\"); a bare entry inherits the failing turn's effort, and \"provider/*\" entries always inherit.",
+          "title": "Retry Fallback Chains"
+        },
+        "fallbackRevertPolicy": {
+          "type": "string",
+          "enum": ["cooldown-expiry", "never"],
+          "default": "cooldown-expiry",
+          "description": "When to return to the primary model after a fallback",
+          "title": "Fallback Revert Policy"
+        }
+      },
+      "type": "object"
+    },
+    "features": {
+      "additionalProperties": true,
+      "properties": {
+        "unexpectedStopDetection": {
+          "type": "string",
+          "enum": ["none", "mechanical", "smart"],
+          "default": "mechanical",
+          "description": "Automatically recover when the assistant stops without a visible message. Smart also classifies text-only stops with a small model.",
+          "title": "Unexpected Stops"
+        }
+      },
+      "type": "object"
+    },
+    "codexResets": {
+      "additionalProperties": true,
+      "properties": {
+        "autoRedeem5h": {
+          "type": "string",
+          "enum": ["unset", "yes", "no"],
+          "default": "unset",
+          "description": "Spend saved Codex resets on 5-hour-only blocks and on expiring credits whose fullest chat window is 5h. unset asks before spending and never spends without a prompt; yes spends without asking; no never spends.",
+          "title": "Codex Auto-Redeem Saved Resets (5h)"
+        },
+        "autoRedeemWeekly": {
+          "type": "string",
+          "enum": ["unset", "yes", "no"],
+          "default": "unset",
+          "description": "Spend saved Codex resets on weekly blocks and on expiring credits whose fullest chat window is weekly. A block known only from a short 429 wait needs both Codex windows. unset asks before spending and never spends without a prompt; yes spends without asking; no never spends.",
+          "title": "Codex Auto-Redeem Saved Resets (Weekly)"
+        },
+        "minBlockedMinutes": {
+          "type": "number",
+          "default": 60,
+          "description": "Only auto-redeem when the natural unblock — the latest reset among the exhausted 5h/weekly windows — is at least this many minutes away (don't spend a scarce credit to save a short wait). Raise it (e.g. 360) to ignore 5h-only blocks.",
+          "title": "Codex Auto-Redeem Min Block"
+        },
+        "keepCredits": {
+          "type": "number",
+          "default": 0,
+          "description": "Never auto-spend below this many saved resets (0 = the last credit may be spent automatically). Credits about to expire are exempt — a reserved credit that expires preserves nothing.",
+          "title": "Codex Auto-Redeem Reserve"
+        },
+        "salvageHorizonHours": {
+          "type": "number",
+          "default": 12,
+          "description": "With auto-redeem enabled, spend a saved Codex reset within this many hours of expiry when either chat window has meaningful usage. 0 disables early salvage; credits expiring within 5 minutes are still attempted regardless of usage.",
+          "title": "Codex Reset Salvage Horizon"
+        }
+      },
+      "type": "object"
+    },
+    "claudeResets": {
+      "additionalProperties": true,
+      "properties": {
+        "autoRedeem5h": {
+          "type": "string",
+          "enum": ["unset", "yes", "no"],
+          "default": "unset",
+          "description": "Spend Claude Cedar or Juniper resets on 5-hour-only blocks and on expiring grants whose fullest covered limit is 5h. unset asks before spending and never spends without a prompt; yes spends without asking; no never spends.",
+          "title": "Claude Auto-Redeem Saved Resets (5h)"
+        },
+        "autoRedeemWeekly": {
+          "type": "string",
+          "enum": ["unset", "yes", "no"],
+          "default": "unset",
+          "description": "Spend Claude Cedar resets on weekly or model-scoped blocks and on expiring grants whose fullest covered limit is weekly. unset asks before spending and never spends without a prompt; yes spends without asking; no never spends.",
+          "title": "Claude Auto-Redeem Saved Resets (Weekly)"
+        },
+        "autoRedeemFable": {
+          "type": "string",
+          "enum": ["unset", "yes", "no"],
+          "default": "unset",
+          "description": "Spend Claude Fable launch resets, which restore Fable weekly usage plus the 5h window. Only this setting governs them. unset asks before spending and never spends without a prompt; yes spends without asking; no never spends.",
+          "title": "Claude Auto-Redeem Fable Resets"
+        },
+        "minBlockedMinutes": {
+          "type": "number",
+          "default": 60,
+          "description": "Only auto-redeem when the natural unblock — the latest reset among the exhausted covered windows — is at least this many minutes away. A 5-hour-only reset is never used for a weekly or model-scoped block.",
+          "title": "Claude Auto-Redeem Min Block"
+        },
+        "keepCredits": {
+          "type": "number",
+          "default": 0,
+          "description": "Keep at least this many Claude resets banked (0 allows the last eligible reset to be spent automatically). The reserve applies to early salvage, but not to eligible resets expiring within 5 minutes.",
+          "title": "Claude Auto-Redeem Reserve"
+        },
+        "salvageHorizonHours": {
+          "type": "number",
+          "default": 12,
+          "description": "With auto-redeem enabled, use a server-selected Cedar reset within this many hours of expiry when its covered windows have meaningful usage. 0 disables early salvage; eligible Cedar or Juniper resets expiring within 5 minutes are still attempted regardless of usage or reserve. Provider limit requirements still apply.",
+          "title": "Claude Reset Salvage Horizon"
+        }
+      },
+      "type": "object"
+    },
+    "provider": {
+      "additionalProperties": true,
+      "properties": {
+        "appendOnlyContext": {
+          "type": "string",
+          "enum": ["auto", "on", "off"],
+          "default": "auto",
+          "description": "Cache system prompt + tool specs and keep an append-only message log so provider prefix caches (DeepSeek, Xiaomi/SGLang, Anthropic) hit at maximum rate. Auto enables for known prefix-cache providers.",
+          "title": "Append-Only Context"
+        }
+      },
+      "type": "object"
+    },
+    "thinkingBudgets": {
+      "additionalProperties": true,
+      "properties": {
+        "minimal": {
+          "type": "number",
+          "default": 1024
+        },
+        "low": {
+          "type": "number",
+          "default": 2048
+        },
+        "medium": {
+          "type": "number",
+          "default": 8192
+        },
+        "high": {
+          "type": "number",
+          "default": 16384
+        },
+        "xhigh": {
+          "type": "number",
+          "default": 32768
+        },
+        "max": {
+          "type": "number",
+          "default": 32768
+        }
+      },
+      "type": "object"
+    },
+    "advisor": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Pair a second model (assigned to the 'advisor' role) that passively reviews each turn and injects notes.",
+          "title": "Enable Advisor"
+        },
+        "syncBacklog": {
+          "type": "string",
+          "enum": ["off", "1", "3", "5", "strict"],
+          "default": "off",
+          "description": "Pause main agent until advisor backlog falls below threshold. Numeric values cap wait at 30 seconds; strict waits for all scheduled reviews without a wall-clock cap. Off disables catch-up delays. Abort, failure, and disposal release waits.",
+          "title": "Advisor Sync Backlog"
+        },
+        "immuneTurns": {
+          "type": "number",
+          "default": 3,
+          "description": "After an advisor concern or blocker interrupts, route further concerns as non-interrupting asides for this many primary turns. Blockers are exempt from the cooldown.",
+          "title": "Advisor Immune Turns"
+        },
+        "continueSeverity": {
+          "type": "string",
+          "enum": ["nit", "concern", "blocker"],
+          "default": "concern",
+          "description": "Minimum severity of an advisor note that wakes the agent after it finished with a final answer. Lower-severity notes stay as a card at the end of the transcript and reach the agent with your next message.",
+          "title": "Advisor Continue Severity"
+        },
+        "reviewMode": {
+          "type": "string",
+          "enum": ["turn", "agent-end"],
+          "default": "turn",
+          "description": "Default advisor cadence when no WATCHDOG.yml roster is present. turn reviews every primary turn; agent-end reviews only final yields.",
+          "title": "Advisor Review Mode"
+        },
+        "reviewInterval": {
+          "type": "number",
+          "default": 1,
+          "description": "Default advisor cadence when no WATCHDOG.yml roster is present: review every Nth eligible primary update. 1 = every update. Skipped updates are sent with the next scheduled review.",
+          "title": "Advisor Review Interval"
+        },
+        "maxNotesPerUpdate": {
+          "type": "number",
+          "default": 4,
+          "description": "Maximum non-blocker advice notes accepted per advisor prompt update (1–32; UI offers 1–5 quick picks). Blockers are exempt.",
+          "title": "Advisor Max Notes Per Update"
+        },
+        "evictStaleResults": {
+          "type": "boolean",
+          "default": true,
+          "description": "Before each review, replace the advisor's read/grep/glob output from older reviews with a short placeholder. The latest review is kept.",
+          "title": "Advisor Evict Stale Results"
+        }
+      },
+      "type": "object"
+    },
+    "auth": {
+      "additionalProperties": true,
+      "properties": {
+        "broker": {
+          "additionalProperties": true,
+          "properties": {
+            "url": {
+              "type": "string"
+            },
+            "token": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "accountPolicies": {
+          "type": "array",
+          "default": []
+        },
+        "unpausedProviders": {
+          "type": "array",
+          "default": [],
+          "description": "Turn providers we paused back on: login, token refresh and stored credentials work again. Each pause names the account risk you accept. Project settings cannot set this",
+          "title": "Unpaused Providers"
+        }
+      },
+      "type": "object"
+    },
+    "enabledModels": {
+      "type": "array",
+      "default": []
+    },
+    "enabledProviders": {
+      "type": "array",
+      "default": []
+    },
+    "disabledProviders": {
+      "type": "array",
+      "default": []
+    },
+    "modelRoleStorage": {
+      "type": "string",
+      "enum": ["global", "project"],
+      "default": "global",
+      "description": "Where model selector role assignments are saved",
+      "title": "Model Role Storage"
+    },
+    "modelRoles": {
+      "type": "object",
+      "default": {}
+    },
+    "judgment": {
+      "additionalProperties": true,
+      "properties": {
+        "attemptTimeoutMs": {
+          "type": "number",
+          "default": 3000
+        }
+      },
+      "type": "object"
+    },
+    "modelPresets": {
+      "type": "object",
+      "default": {}
+    },
+    "modelTags": {
+      "type": "object",
+      "default": {}
+    },
+    "modelProviderOrder": {
+      "type": "array",
+      "default": []
+    },
+    "cycleOrder": {
+      "type": "array",
+      "default": ["smol", "default", "slow"]
+    },
+    "memory": {
+      "additionalProperties": true,
+      "properties": {
+        "backend": {
+          "type": "string",
+          "enum": ["off", "local", "hindsight", "mnemopi", "sharpshooter"],
+          "default": "off",
+          "description": "Off, local summary pipeline, Mnemopi SQLite, Hindsight remote memory, or Sharpshooter",
+          "title": "Memory Backend"
+        }
+      },
+      "type": "object"
+    },
+    "memories": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "maxRolloutsPerStartup": {
+          "type": "number",
+          "default": 64
+        },
+        "maxRolloutAgeDays": {
+          "type": "number",
+          "default": 30
+        },
+        "minRolloutIdleHours": {
+          "type": "number",
+          "default": 12
+        },
+        "threadScanLimit": {
+          "type": "number",
+          "default": 300
+        },
+        "maxRawMemoriesForGlobal": {
+          "type": "number",
+          "default": 200
+        },
+        "stage1Concurrency": {
+          "type": "number",
+          "default": 8
+        },
+        "stage1LeaseSeconds": {
+          "type": "number",
+          "default": 120
+        },
+        "stage1RetryDelaySeconds": {
+          "type": "number",
+          "default": 120
+        },
+        "phase2LeaseSeconds": {
+          "type": "number",
+          "default": 180
+        },
+        "phase2RetryDelaySeconds": {
+          "type": "number",
+          "default": 180
+        },
+        "phase2HeartbeatSeconds": {
+          "type": "number",
+          "default": 30
+        },
+        "rolloutPayloadPercent": {
+          "type": "number",
+          "default": 0.7
+        },
+        "phase1InputTokenLimit": {
+          "type": "number",
+          "default": 4000
+        },
+        "fallbackTokenLimit": {
+          "type": "number",
+          "default": 16000
+        },
+        "summaryInjectionTokenLimit": {
+          "type": "number",
+          "default": 5000
+        }
+      },
+      "type": "object"
+    },
+    "sharpshooter": {
+      "additionalProperties": true,
+      "properties": {
+        "model": {
+          "type": "string",
+          "description": "Model selector for extraction/consolidation, empty = smol role",
+          "title": "Sharpshooter Model"
+        },
+        "minPromptLength": {
+          "type": "number",
+          "default": 16
+        },
+        "intervalMinutes": {
+          "type": "number",
+          "default": 5
+        },
+        "injectionTokenLimit": {
+          "type": "number",
+          "default": 15000
+        }
+      },
+      "type": "object"
+    },
+    "mnemopi": {
+      "additionalProperties": true,
+      "properties": {
+        "dbPath": {
+          "type": "string",
+          "description": "Optional SQLite DB path; a leading ~ is the home directory. Defaults to the agent memories directory.",
+          "title": "Mnemopi DB Path"
+        },
+        "bank": {
+          "type": "string",
+          "description": "Optional shared bank base name. Per-project modes derive project-local banks from it.",
+          "title": "Mnemopi Bank"
+        },
+        "scoping": {
+          "type": "string",
+          "enum": ["global", "per-project", "per-project-tagged"],
+          "default": "per-project",
+          "description": "global = one shared bank; per-project = isolated bank per cwd; per-project-tagged = project-local writes plus global recall visibility",
+          "title": "Mnemopi Scoping"
+        },
+        "embeddingVariant": {
+          "type": "string",
+          "enum": ["en", "multilingual"],
+          "default": "en",
+          "description": "Local embedding model family. en = stronger English model; multilingual = cross-language model. Changing this rebuilds existing memory embeddings on next start.",
+          "title": "Embedding variant"
+        },
+        "autoRecall": {
+          "type": "boolean",
+          "default": true,
+          "description": "Recall local memories into the first turn of each session",
+          "title": "Mnemopi Auto Recall"
+        },
+        "recallRelevance": {
+          "type": "string",
+          "enum": ["auto", "on", "off"],
+          "default": "off",
+          "description": "Ask the judge model role whether each automatically recalled memory is relevant to the task before injecting it",
+          "title": "Mnemopi Recall Relevance"
+        },
+        "autoRetain": {
+          "type": "boolean",
+          "default": true,
+          "description": "Retain completed conversation turns into local Mnemopi memory",
+          "title": "Mnemopi Auto Retain"
+        },
+        "polyphonicRecall": {
+          "type": "boolean",
+          "default": false,
+          "description": "Fuse recall with graph, fact, vector and temporal voices so linked memories surface without a keyword match",
+          "title": "Mnemopi Polyphonic Recall"
+        },
+        "enhancedRecall": {
+          "type": "boolean",
+          "default": false,
+          "description": "Cache recall results for repeated and similar queries with identical options; any memory write clears it",
+          "title": "Mnemopi Enhanced Recall"
+        },
+        "proactiveLinking": {
+          "type": "boolean",
+          "default": false,
+          "description": "Ingest new memories into the episodic graph as they are stored, linking them to related entities and memories",
+          "title": "Mnemopi Proactive Linking"
+        },
+        "noEmbeddings": {
+          "type": "boolean",
+          "default": false,
+          "description": "Force deterministic FTS-only recall instead of vector embeddings",
+          "title": "Mnemopi Disable Embeddings"
+        },
+        "embeddingModel": {
+          "type": "string",
+          "description": "Advanced: explicit embedding model id that overrides the variant. Leave empty to use mnemopi.embeddingVariant.",
+          "title": "Mnemopi Embedding Model"
+        },
+        "embeddingApiUrl": {
+          "type": "string",
+          "description": "Optional OpenAI-compatible embedding endpoint passed to Mnemopi",
+          "title": "Mnemopi Embedding API URL"
+        },
+        "embeddingApiKey": {
+          "type": "string",
+          "description": "Optional embedding API key passed to Mnemopi",
+          "title": "Mnemopi Embedding API Key"
+        },
+        "embeddingQueryPrefix": {
+          "type": "string",
+          "description": "Text prepended to recall queries before embedding, for instruction-tuned embedders (Qwen3-Embedding, E5); stored memories are embedded unchanged",
+          "title": "Mnemopi Embedding Query Prefix"
+        },
+        "embeddingInputType": {
+          "type": "boolean",
+          "default": false,
+          "description": "Send input_type (query for recall, passage for stored memories) with embedding API requests; NVIDIA NIM asymmetric embedders require it",
+          "title": "Mnemopi Embedding Input Type"
+        },
+        "llmMode": {
+          "type": "string",
+          "enum": ["none", "smol", "remote"],
+          "default": "smol",
+          "description": "Use no LLM, the online tiny model (the TINY role from /models, else @smol), or a remote OpenAI-compatible endpoint",
+          "title": "Mnemopi LLM Mode"
+        },
+        "llmBaseUrl": {
+          "type": "string",
+          "description": "Optional OpenAI-compatible LLM endpoint for Mnemopi remote mode",
+          "title": "Mnemopi LLM Base URL"
+        },
+        "llmApiKey": {
+          "type": "string",
+          "description": "Optional LLM API key for Mnemopi remote mode",
+          "title": "Mnemopi LLM API Key"
+        },
+        "llmModel": {
+          "type": "string",
+          "description": "Optional LLM model name for Mnemopi remote mode",
+          "title": "Mnemopi LLM Model"
+        },
+        "retainEveryNTurns": {
+          "type": "number",
+          "default": 4
+        },
+        "recallLimit": {
+          "type": "number",
+          "default": 8
+        },
+        "recallContextTurns": {
+          "type": "number",
+          "default": 3
+        },
+        "recallMaxQueryChars": {
+          "type": "number",
+          "default": 4000
+        },
+        "injectionTokenLimit": {
+          "type": "number",
+          "default": 5000
+        },
+        "debug": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "type": "object"
+    },
+    "hindsight": {
+      "additionalProperties": true,
+      "properties": {
+        "apiUrl": {
+          "type": "string",
+          "default": "http://localhost:8888",
+          "description": "Hindsight server URL (Cloud or self-hosted)",
+          "title": "Hindsight API URL"
+        },
+        "apiToken": {
+          "type": "string",
+          "description": "Bearer token for authenticated Hindsight servers",
+          "title": "Hindsight API Token"
+        },
+        "bankId": {
+          "type": "string",
+          "description": "Memory bank identifier (default: project name)",
+          "title": "Hindsight Bank ID"
+        },
+        "bankIdPrefix": {
+          "type": "string"
+        },
+        "scoping": {
+          "type": "string",
+          "enum": ["global", "per-project", "per-project-tagged"],
+          "default": "per-project-tagged",
+          "description": "global = one shared bank; per-project = isolated bank per cwd; per-project-tagged = shared bank with project tags so global + project memories merge on recall",
+          "title": "Hindsight Scoping"
+        },
+        "globalScope": {
+          "type": "boolean",
+          "default": false,
+          "description": "Let retain and learn take scope: global, which stores a memory without the project tag so every project recalls it. Needs global or per-project-tagged scoping",
+          "title": "Hindsight Global Scope"
+        },
+        "bankMission": {
+          "type": "string"
+        },
+        "retainMission": {
+          "type": "string"
+        },
+        "autoRecall": {
+          "type": "boolean",
+          "default": true,
+          "description": "Recall memories on the first turn of each session",
+          "title": "Hindsight Auto Recall"
+        },
+        "autoRetain": {
+          "type": "boolean",
+          "default": true,
+          "description": "Retain transcript every N turns and at session boundaries",
+          "title": "Hindsight Auto Retain"
+        },
+        "retainMode": {
+          "type": "string",
+          "enum": ["full-session", "last-turn"],
+          "default": "full-session",
+          "description": "full-session = upsert one document per session, last-turn = chunked",
+          "title": "Hindsight Retain Mode"
+        },
+        "retainEveryNTurns": {
+          "type": "number",
+          "default": 3
+        },
+        "retainOverlapTurns": {
+          "type": "number",
+          "default": 2
+        },
+        "retainContext": {
+          "type": "string",
+          "default": "omp"
+        },
+        "recallBudget": {
+          "type": "string",
+          "enum": ["low", "mid", "high"],
+          "default": "mid"
+        },
+        "recallMaxTokens": {
+          "type": "number",
+          "default": 1024
+        },
+        "recallContextTurns": {
+          "type": "number",
+          "default": 1
+        },
+        "recallMaxQueryChars": {
+          "type": "number",
+          "default": 800
+        },
+        "recallTypes": {
+          "type": "array",
+          "default": ["world", "experience"]
+        },
+        "debug": {
+          "type": "boolean",
+          "default": false
+        },
+        "requestTimeoutMs": {
+          "type": "number",
+          "default": 30000
+        },
+        "reflectTimeoutMs": {
+          "type": "number",
+          "default": 120000
+        },
+        "recallTimeoutMs": {
+          "type": "number",
+          "default": 30000
+        },
+        "retainTimeoutMs": {
+          "type": "number",
+          "default": 60000
+        },
+        "mentalModelsEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Read curated reflect summaries (mental models) into developer instructions at boot. Loads existing models on the bank — does not write. Pair with hindsight.mentalModelAutoSeed to also auto-create the built-in seed set.",
+          "title": "Hindsight Mental Models"
+        },
+        "mentalModelAutoSeed": {
+          "type": "boolean",
+          "default": true,
+          "description": "At session start, create any built-in mental models (project-conventions, project-decisions, user-preferences) that do not yet exist on the bank.",
+          "title": "Hindsight Mental Model Auto-Seed"
+        },
+        "mentalModelMaxRenderChars": {
+          "type": "number",
+          "default": 16000
+        }
+      },
+      "type": "object"
+    },
+    "ttsr": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Interrupt the agent mid-stream when output matches rule patterns (Time-Traveling Stream Rules)",
+          "title": "TTSR"
+        },
+        "judge": {
+          "type": "string",
+          "enum": ["auto", "on", "off"],
+          "default": "auto",
+          "description": "Ask the judge model role each `question` rule about completed replies, reasoning, and tool calls; a yes injects the rule as a warning",
+          "title": "Judged Rules"
+        },
+        "contextMode": {
+          "type": "string",
+          "enum": ["discard", "keep"],
+          "default": "discard",
+          "description": "What to do with partial output when TTSR triggers",
+          "title": "TTSR Context Mode"
+        },
+        "interruptMode": {
+          "type": "string",
+          "enum": ["never", "prose-only", "tool-only", "always"],
+          "default": "always",
+          "description": "When to interrupt mid-stream vs inject warning after completion",
+          "title": "TTSR Interrupt Mode"
+        },
+        "repeatMode": {
+          "type": "string",
+          "enum": ["once", "after-gap"],
+          "default": "once",
+          "description": "How rules can repeat: once per session or after a message gap",
+          "title": "TTSR Repeat Mode"
+        },
+        "repeatGap": {
+          "type": "number",
+          "default": 10,
+          "description": "Messages before a rule can trigger again",
+          "title": "TTSR Repeat Gap"
+        },
+        "builtinRules": {
+          "type": "boolean",
+          "default": true,
+          "description": "Load the default rules shipped with the agent (override individually with ttsr.disabledRules)",
+          "title": "Built-in Rules"
+        },
+        "disabledRules": {
+          "type": "array",
+          "default": [],
+          "description": "Rule names to ignore entirely (applies to bundled defaults and your own rules)",
+          "title": "Disabled Rules"
+        }
+      },
+      "type": "object"
+    },
+    "plan": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable plan mode for read-only exploration and planning before execution",
+          "title": "Plan Mode"
+        },
+        "defaultOnStartup": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically enter plan mode at the start of every new session",
+          "title": "Start in Plan Mode"
+        },
+        "autosave": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically save approved plans to disk when plan mode completes",
+          "title": "Autosave Plans"
+        },
+        "autosaveDir": {
+          "type": "string",
+          "description": "Directory for autosaved plans. Supports ~, absolute, and cwd-relative paths. Empty uses <project>/.omp/plans/.",
+          "title": "Autosave Directory"
+        }
+      },
+      "type": "object"
+    },
+    "goal": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable per-session goal mode and the hidden goal tool",
+          "title": "Goal Mode"
+        },
+        "statusInFooter": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show token budget alongside the goal indicator in the status line",
+          "title": "Goal Status in Footer"
+        },
+        "continuationModes": {
+          "type": "array",
+          "default": ["interactive"],
+          "description": "Run modes where active goals may auto-continue between turns (\"interactive\", \"rpc\")",
+          "title": "Goal Continuation Modes"
+        }
+      },
+      "type": "object"
+    },
+    "title": {
+      "additionalProperties": true,
+      "properties": {
+        "icons": {
+          "type": "string",
+          "enum": ["nf+emoji", "emoji", "boring"],
+          "default": "nf+emoji",
+          "description": "Icon and short code that head new generated or /rename session titles",
+          "title": "Title Icons"
+        },
+        "generator": {
+          "type": "string",
+          "enum": ["fork", "tiny"],
+          "default": "fork",
+          "description": "What names an untitled session from the user's messages",
+          "title": "Title Generator"
+        },
+        "refreshOnReplan": {
+          "type": "boolean",
+          "default": true,
+          "description": "Refresh generated session titles after todo init replans unless the title was set by the user",
+          "title": "Refresh Title on Replan"
+        },
+        "refreshAfterPrompts": {
+          "type": "number",
+          "default": 0,
+          "description": "Every this many operator prompts, ask the judge model whether a generated session title still fits the conversation, and regenerate it if not",
+          "title": "Refresh Title After Prompts"
+        }
+      },
+      "type": "object"
+    },
+    "extensions": {
+      "type": "array",
+      "default": []
+    },
+    "disabledExtensions": {
+      "type": "array",
+      "default": []
+    },
+    "skills": {
+      "additionalProperties": true,
+      "properties": {
+        "registryUrl": {
+          "type": "string",
+          "default": "https://skills.omp.sh",
+          "description": "Skillshare registry used by `omp skill` to install, search, and publish skills (https://host[:port])",
+          "title": "Skill Registry"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "enableSkillCommands": {
+          "type": "boolean",
+          "default": true,
+          "description": "Register skills as /skill:name commands",
+          "title": "Skill Commands"
+        },
+        "enableCodexUser": {
+          "type": "boolean",
+          "default": false
+        },
+        "enableClaudeUser": {
+          "type": "boolean",
+          "default": false
+        },
+        "enableClaudeProject": {
+          "type": "boolean",
+          "default": true
+        },
+        "enablePiUser": {
+          "type": "boolean",
+          "default": true
+        },
+        "enablePiProject": {
+          "type": "boolean",
+          "default": true
+        },
+        "enableAgentsUser": {
+          "type": "boolean",
+          "default": true
+        },
+        "enableAgentsProject": {
+          "type": "boolean",
+          "default": true
+        },
+        "customDirectories": {
+          "type": "array",
+          "default": []
+        },
+        "ignoredSkills": {
+          "type": "array",
+          "default": []
+        },
+        "manualSkills": {
+          "type": "array",
+          "default": []
+        },
+        "includeSkills": {
+          "type": "array",
+          "default": []
+        }
+      },
+      "type": "object"
+    },
+    "commands": {
+      "additionalProperties": true,
+      "properties": {
+        "enableClaudeUser": {
+          "type": "boolean",
+          "default": false,
+          "description": "Load commands from ~/.claude/commands/",
+          "title": "Claude User Commands"
+        },
+        "enableClaudeProject": {
+          "type": "boolean",
+          "default": true,
+          "description": "Load commands from .claude/commands/",
+          "title": "Claude Project Commands"
+        },
+        "enableOpencodeUser": {
+          "type": "boolean",
+          "default": false,
+          "description": "Load commands from ~/.config/opencode/commands/",
+          "title": "OpenCode User Commands"
+        },
+        "enableOpencodeProject": {
+          "type": "boolean",
+          "default": true,
+          "description": "Load commands from .opencode/commands/",
+          "title": "OpenCode Project Commands"
+        }
+      },
+      "type": "object"
+    },
+    "extensionHandlers": {
+      "additionalProperties": true,
+      "properties": {
+        "toolCallTimeoutMs": {
+          "type": "number",
+          "default": 30000,
+          "description": "Positive finite active-work timeout for extension tool_call handlers; invalid values use 30000ms, and time awaiting OMP-owned dialogs does not count",
+          "title": "Tool Call Handler Timeout (ms)"
+        },
+        "modeControl": {
+          "type": "boolean",
+          "default": true,
+          "description": "Let extensions enter and exit plan, vibe, goal, and loop modes via ctx.sessionModes.set(); reading mode state stays available",
+          "title": "Extension Mode Control"
+        }
+      },
+      "type": "object"
+    },
+    "extensionRenderers": {
+      "additionalProperties": true,
+      "properties": {
+        "assistantText": {
+          "type": "boolean",
+          "default": false,
+          "description": "Let extensions change how assistant replies are drawn, redraw a reply in place, and receive clicks on their own links; the session, exports and model context keep the reply as written",
+          "title": "Extension Reply Renderers"
+        },
+        "transcriptPresenters": {
+          "type": "boolean",
+          "default": false,
+          "description": "Let extensions draw transcript blocks such as tool calls in full, as one compact row, or hidden; the session, exports and model context are unchanged",
+          "title": "Extension Transcript Presenters"
+        }
+      },
+      "type": "object"
+    },
+    "exa": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the Exa web search provider",
+          "title": "Exa"
+        },
+        "searchDelayMs": {
+          "type": "number",
+          "default": 1000,
+          "description": "Minimum delay between Exa web search requests in milliseconds; set 0 to disable pacing",
+          "title": "Exa Search Delay"
+        }
+      },
+      "type": "object"
+    },
+    "searxng": {
+      "additionalProperties": true,
+      "properties": {
+        "endpoint": {
+          "type": "string",
+          "description": "Base URL of a self-hosted SearXNG instance used for web search",
+          "title": "SearXNG Endpoint"
+        },
+        "token": {
+          "type": "string"
+        },
+        "basicUsername": {
+          "type": "string"
+        },
+        "basicPassword": {
+          "type": "string"
+        },
+        "categories": {
+          "type": "string"
+        },
+        "engines": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        },
+        "safesearch": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "browser": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the browser eval prelude for scripted browser automation",
+          "title": "Browser"
+        },
+        "cdpUrl": {
+          "type": "string",
+          "description": "Default HTTP CDP discovery endpoint (for example http://127.0.0.1:9222) to attach to instead of launching a browser. An explicit app on the tool call takes precedence.",
+          "title": "Browser CDP URL"
+        },
+        "relay": {
+          "type": "boolean",
+          "default": false,
+          "description": "Drive your own Chrome tabs through the omp browser relay. Install the extension once (`omp browser-relay install`); the relay server auto-starts when the browser prelude needs it. Takes precedence over Browser CDP URL; set PI_BROWSER_RELAY=0 or PI_BROWSER_RELAY=1 to override. Subagents skip it unless an open passes app: \"relay\".",
+          "title": "Browser Relay"
+        },
+        "relayUrl": {
+          "type": "string",
+          "description": "omp browser relay endpoint (default http://127.0.0.1:9224).",
+          "title": "Browser Relay URL"
+        },
+        "headless": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run the browser without a window (disable to show it). omp's WebKit tabs gain or lose their windows at once where the engine ships its viewer (macOS); elsewhere a visible browser is Chromium, launched in the new mode by the next open.",
+          "title": "Headless Browser"
+        },
+        "cmux": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use cmux WKWebView surfaces for browser automation when a cmux socket is available (not for subagents). Set PI_BROWSER_CMUX=0 or PI_BROWSER_CMUX=1 to override.",
+          "title": "cmux Browser"
+        },
+        "tern": {
+          "type": "boolean",
+          "default": true,
+          "description": "Inside a Tern pane, open browser tabs as picture-in-pictures over omp's pane (native web view) instead of omp's own headless browser; falls back to that browser when no Tern window can host them. Subagents skip it unless an open passes app: \"tern\". An explicit app, the relay and Browser CDP URL take precedence; app \"own\" opts one open out. Set PI_BROWSER_TERN=0 or PI_BROWSER_TERN=1 to override.",
+          "title": "Tern Browser"
+        },
+        "webkit": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open browser tabs in omp's own headless WebKit engine instead of managed Chromium when the engine is installed (omp downloads it to ~/.o2/lib/abkit before Chrome for Testing when no browser is installed; see Browser WebKit Path). Chromium still opens a visible browser where the engine ships no viewer, and tabs the engine fails to start; an explicit app, the relay, Browser CDP URL, Tern and cmux take precedence; app \"chromium\" opts one open out. Set PI_BROWSER_WEBKIT=0 or PI_BROWSER_WEBKIT=1 to override.",
+          "title": "WebKit Browser"
+        },
+        "webkitPath": {
+          "type": "string",
+          "description": "omp's WebKit engine: its host executable, or an ABKit engine directory (which holds it as ABHost; ABHost.exe on Windows). If unset, omp runs the installed engine, ~/.o2/lib/abkit/ABHost (ABHost.exe on Windows). Supports ~. PI_BROWSER_WEBKIT_PATH overrides it.",
+          "title": "Browser WebKit Path"
+        },
+        "freezeOnTurnEnd": {
+          "type": "boolean",
+          "default": true,
+          "description": "Freeze OMP-owned headless Chromium tabs when a turn settles so animated pages stop burning CPU/GPU while idle (WebKit tabs draw nothing unless asked). Tabs unfreeze automatically on next use; pass persist:true on open to opt a tab out.",
+          "title": "Freeze Browser Tabs On Turn End"
+        },
+        "idleCloseSec": {
+          "type": "number",
+          "default": 1800,
+          "description": "Close OMP-owned headless browser tabs and Tern browser picture-in-pictures idle longer than this many seconds (0 = never; session dispose still reaps). Never touches relay/CDP/spawned browsers or other sessions' tabs.",
+          "title": "Browser Idle Close Timeout"
+        },
+        "screenshotDir": {
+          "type": "string",
+          "description": "Directory to save screenshots. If unset, screenshots go to a temp file. Supports ~. Examples: ~/Downloads, ~/Desktop, /sdcard/Download (Android)",
+          "title": "Screenshot Directory"
+        }
+      },
+      "type": "object"
+    },
+    "disassembler": {
+      "additionalProperties": true,
+      "properties": {
+        "backend": {
+          "type": "string",
+          "enum": ["auto", "ghidra", "ida", "none"],
+          "default": "auto",
+          "description": "Backend for analysis selectors in read and eval's dsm namespace; bare executable reads show metadata only. Auto uses IDA Pro when installed, else Ghidra (downloaded on first analysis)",
+          "title": "Disassembler"
+        },
+        "maxOpen": {
+          "type": "number",
+          "default": 4,
+          "description": "Most databases (omp.ida.* / omp.ghidra.* daemons in omp ps) open at once per project; opening another evicts an unreferenced idle one. Close retained dsm handles when done",
+          "title": "Max Open Databases"
+        },
+        "idleCloseSec": {
+          "type": "number",
+          "default": 900,
+          "description": "Save and close unreferenced databases idle longer than this many seconds (0 = never); retained dsm handles stay open. The exec namespace resets on reopen",
+          "title": "Idle Close Timeout"
+        }
+      },
+      "type": "object"
+    },
+    "ida": {
+      "additionalProperties": true,
+      "properties": {
+        "python": {
+          "type": "string",
+          "default": "",
+          "description": "Python interpreter that can import ida_domain and idapro; empty auto-detects",
+          "title": "IDA Python"
+        },
+        "installDir": {
+          "type": "string",
+          "default": "",
+          "description": "Directory containing libidalib, exported as IDADIR; empty auto-detects ($IDADIR, ida-config.json, standard install paths)",
+          "title": "IDA Install Dir"
+        }
+      },
+      "type": "object"
+    },
+    "ghidra": {
+      "additionalProperties": true,
+      "properties": {
+        "installDir": {
+          "type": "string",
+          "default": "",
+          "description": "Ghidra 12+ install directory (contains Ghidra/application.properties); empty uses $GHIDRA_INSTALL_DIR, Homebrew, else a managed download under ~/.omp/ghidra",
+          "title": "Ghidra Install Dir"
+        },
+        "python": {
+          "type": "string",
+          "default": "",
+          "description": "Python interpreter that can import pyghidra; empty uses a managed venv built from the install's bundled wheels",
+          "title": "Ghidra Python"
+        }
+      },
+      "type": "object"
+    },
+    "mcp": {
+      "additionalProperties": true,
+      "properties": {
+        "enableProjectConfig": {
+          "type": "boolean",
+          "default": true,
+          "description": "Load .mcp.json/mcp.json from project root",
+          "title": "MCP Project Config"
+        },
+        "startupTimeoutMs": {
+          "type": "number",
+          "default": 250,
+          "description": "Wait this many milliseconds for initial MCP tool discovery; 0 waits until connections settle",
+          "title": "MCP Startup Window"
+        },
+        "evalNamespaces": {
+          "type": "boolean",
+          "default": false,
+          "description": "Expose each MCP server as an eval global (github.create_issue(...)) instead of top-level or xd:// tools",
+          "title": "MCP Eval Namespaces"
+        },
+        "builtinTransforms": {
+          "type": "boolean",
+          "default": true,
+          "description": "Skip recognized MCP servers that omp's own tools replace (Codex's node_repl while eval runs JavaScript)",
+          "title": "MCP Built-in Transforms"
+        },
+        "renderMarkdownResults": {
+          "type": "boolean",
+          "default": true,
+          "description": "Render non-JSON MCP text results as Markdown in the transcript",
+          "title": "MCP Markdown Results"
+        },
+        "notifications": {
+          "type": "boolean",
+          "default": false,
+          "description": "Inject MCP resource updates into the agent conversation",
+          "title": "MCP Update Injection"
+        },
+        "notificationDebounceMs": {
+          "type": "number",
+          "default": 500,
+          "description": "Debounce window in milliseconds for MCP resource updates before injecting them into the conversation",
+          "title": "MCP Notification Debounce"
+        }
+      },
+      "type": "object"
+    },
+    "secrets": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Obfuscate configured secrets and redact credential-shaped tokens before sending to AI providers",
+          "title": "Hide Secrets"
+        }
+      },
+      "type": "object"
+    },
+    "tts": {
+      "additionalProperties": true,
+      "properties": {
+        "localVoice": {
+          "type": "string",
+          "enum": ["harper", "hadley", "delia", "everly", "easton", "preston", "miles", "trevor", "maeve", "bryony", "edwin", "hugh"],
+          "default": "harper",
+          "description": "Phonon voice used by the local TTS backend (American/British, female/male)",
+          "title": "Local TTS Voice"
+        },
+        "localSpeed": {
+          "type": "number",
+          "default": 1,
+          "description": "Speaking rate of the local TTS backend (tts tool, omp say). 1 = normal; clamped to 0.8–1.3",
+          "title": "Local TTS Speed"
+        }
+      },
+      "type": "object"
+    },
+    "speech": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Speak the assistant's output aloud through the speakers as it streams",
+          "title": "Speech Vocalization"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["all", "assistant", "yield"],
+          "default": "assistant",
+          "description": "What to speak: all = assistant messages + thinking; assistant = messages only; yield = only the final message at turn end",
+          "title": "Speech Vocalization Mode"
+        },
+        "enhanced": {
+          "type": "boolean",
+          "default": false,
+          "description": "Rewrite assistant output into natural spoken prose with the tiny/smol model before synthesis (describes code, drops links and markdown). Falls back to mechanical cleanup on failure",
+          "title": "Enhanced Speech Rewriting"
+        },
+        "voice": {
+          "type": "string",
+          "enum": ["harper", "hadley", "delia", "everly", "easton", "preston", "miles", "trevor", "maeve", "bryony", "edwin", "hugh"],
+          "default": "harper",
+          "description": "Phonon voice used when speaking the assistant's output aloud",
+          "title": "Speech Vocalization Voice"
+        },
+        "speed": {
+          "type": "number",
+          "default": 1,
+          "description": "Speaking rate when reading the assistant's output aloud. 1 = normal; clamped to 0.8–1.3",
+          "title": "Speech Vocalization Speed"
+        }
+      },
+      "type": "object"
+    },
+    "stt": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable speech-to-text input via microphone",
+          "title": "Speech-to-Text"
+        },
+        "language": {
+          "type": "string",
+          "default": "en"
+        },
+        "submitTrigger": {
+          "type": "string",
+          "enum": ["never", "release", "release-complete", "say-submit"],
+          "default": "never",
+          "description": "Choose when speech dictation automatically submits: Never, Release (2+ words), Release with complete sentence, or When I Say Submit.",
+          "title": "Speech-to-Text Submit Trigger"
+        }
+      },
+      "type": "object"
+    },
+    "live": {
+      "additionalProperties": true,
+      "properties": {
+        "voice": {
+          "type": "string",
+          "default": "sol",
+          "description": "Voice of realtime voice sessions; a custom live endpoint may take other names (set in config)",
+          "title": "Live Voice"
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "Base URL of an OpenAI Realtime WebRTC-compatible server (e.g. http://127.0.0.1:8080/v1) used for live voice instead of Codex; empty uses Codex",
+          "title": "Live Endpoint"
+        },
+        "apiKey": {
+          "type": "string",
+          "description": "Bearer key sent only to the live endpoint: a literal, an environment variable name, or !command",
+          "title": "Live Endpoint API Key"
+        }
+      },
+      "type": "object"
+    },
+    "collab": {
+      "additionalProperties": true,
+      "properties": {
+        "relayUrl": {
+          "type": "string",
+          "default": "wss://my.omp.sh",
+          "description": "Relay used by /collab (wss://host[:port])",
+          "title": "Relay URL"
+        },
+        "webUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Browser UI used by /collab links; empty derives from collab.relayUrl; explicit http:// is localhost-only",
+          "title": "Web UI URL"
+        },
+        "displayName": {
+          "type": "string",
+          "default": "",
+          "description": "Name shown to other collab participants (default: OS username)",
+          "title": "Display Name"
+        },
+        "autoStart": {
+          "type": "string",
+          "enum": ["off", "view", "control"],
+          "default": "off",
+          "description": "Host every interactive session via collab.relayUrl as it starts and publish it to the local registry (omp collab list); rooms rotate on session switch",
+          "title": "Auto Start"
+        }
+      },
+      "type": "object"
+    },
+    "share": {
+      "additionalProperties": true,
+      "properties": {
+        "serverUrl": {
+          "type": "string",
+          "default": "https://my.omp.sh/s",
+          "description": "Share viewer/upload base used by /share (encrypted blob upload + viewer; links are <base>/<id>#<key>)",
+          "title": "Share Server"
+        },
+        "store": {
+          "type": "string",
+          "enum": ["blob", "gist"],
+          "default": "blob",
+          "description": "Where /share uploads the encrypted session blob",
+          "title": "Share Store"
+        },
+        "redactSecrets": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run the secret obfuscator over /share snapshots before upload (uses the secrets.* config)",
+          "title": "Share Secret Redaction"
+        }
+      },
+      "type": "object"
+    },
+    "stream": {
+      "additionalProperties": true,
+      "properties": {
+        "serverUrl": {
+          "type": "string",
+          "default": "https://live.omp.sh",
+          "description": "Live stream server used by `omp stream` (https://host[:port]); viewers watch at <base>/<your Stencil username>",
+          "title": "Stream Server"
+        },
+        "redactPatterns": {
+          "type": "array",
+          "default": [],
+          "description": "Additional regular expressions redacted from every streamed row, on top of env/secrets.yml values and built-in credential shapes",
+          "title": "Extra Redaction Patterns"
+        }
+      },
+      "type": "object"
+    },
+    "gc": {
+      "additionalProperties": true,
+      "properties": {
+        "blobs": {
+          "type": "boolean",
+          "default": true
+        },
+        "archive": {
+          "type": "boolean",
+          "default": true
+        },
+        "wal": {
+          "type": "boolean",
+          "default": true
+        },
+        "coldArchiveAfterDays": {
+          "type": "number",
+          "default": 30
+        },
+        "retainNewestGlobal": {
+          "type": "number",
+          "default": 20
+        },
+        "retainNewestPerCwd": {
+          "type": "number",
+          "default": 10
+        },
+        "stale": {
+          "type": "boolean",
+          "default": false
+        },
+        "staleRetainNewest": {
+          "type": "number",
+          "default": 20
+        },
+        "staleRetainDays": {
+          "type": "number",
+          "default": 30
+        },
+        "compress": {
+          "type": "boolean",
+          "default": false
+        },
+        "compressAfterDays": {
+          "type": "number",
+          "default": 7
+        },
+        "strip": {
+          "type": "boolean",
+          "default": false
+        },
+        "stripAfterDays": {
+          "type": "number",
+          "default": 30
+        },
+        "autoCompress": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "type": "object"
+    },
+    "telemetry": {
+      "additionalProperties": true,
+      "properties": {
+        "otlpExportEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow OMP to export traces, logs, and metrics using OTEL_* endpoints. Changes take effect on the next launch.",
+          "title": "OTLP Telemetry Export"
+        }
+      },
+      "type": "object"
+    },
+    "spotlight": {
+      "additionalProperties": true,
+      "properties": {
+        "experiment": {
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Shape tool output and rank find results with Stencil Spotlight, and log each shaped result to the session",
+              "title": "Spotlight Experiment"
+            },
+            "holdout": {
+              "type": "number",
+              "default": 0.05
+            },
+            "scoreFree": {
+              "type": "number",
+              "default": 0.15
+            },
+            "tools": {
+              "type": "array",
+              "default": ["*"]
+            }
+          },
+          "type": "object"
+        },
+        "url": {
+          "type": "string",
+          "default": "https://cloud.stencil.so/v1/spotlight"
+        },
+        "model": {
+          "type": "string",
+          "default": "whiskers-latest"
+        },
+        "thinking": {
+          "type": "string",
+          "enum": ["low", "med", "high", "max"],
+          "default": "med"
+        },
+        "timeoutMs": {
+          "type": "number",
+          "default": 5000
+        }
+      },
+      "type": "object"
+    },
+    "models": {
+      "additionalProperties": true,
+      "properties": {
+        "noJudge": {
+          "type": "boolean",
+          "default": false
+        },
+        "noSpotlight": {
+          "type": "boolean",
+          "default": false
+        },
+        "offline": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "type": "object"
+    }
+  },
+  "type": "object"
+}
